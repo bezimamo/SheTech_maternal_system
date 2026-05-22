@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_text_styles.dart';
-import '../../../core/widgets/app_bar_widget.dart';
-import '../services/appointment_service.dart';
-import '../models/schedule_model.dart';
-import '../../child_growth/services/child_service.dart';
 import 'package:intl/intl.dart';
+import '../../child_growth/services/child_service.dart';
+import '../../profile/services/profile_service.dart';
+import '../models/schedule_model.dart';
+import '../services/appointment_service.dart';
+import '../widgets/appointments_header.dart';
+import '../widgets/appointment_theme.dart';
+import '../widgets/child_profile_card.dart';
+import '../widgets/child_vaccine_card.dart';
+import '../widgets/maternal_vaccine_timeline.dart';
+import '../widgets/reminder_banner.dart';
+import '../widgets/visit_card.dart';
 
 class AppointmentsScreen extends StatefulWidget {
   const AppointmentsScreen({super.key});
@@ -14,13 +19,17 @@ class AppointmentsScreen extends StatefulWidget {
   State<AppointmentsScreen> createState() => _AppointmentsScreenState();
 }
 
-class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTickerProviderStateMixin {
+class _AppointmentsScreenState extends State<AppointmentsScreen>
+    with SingleTickerProviderStateMixin {
   final AppointmentService _appointmentService = AppointmentService();
   final ChildService _childService = ChildService();
+  final ProfileService _profileService = ProfileService();
+
   late TabController _tabController;
   ScheduleData? _scheduleData;
   List<dynamic> _children = [];
-  Map<String, List<dynamic>> _childVaccines = {};
+  final Map<String, List<dynamic>> _childVaccines = {};
+  String _motherName = '';
   bool _isLoading = true;
 
   @override
@@ -38,109 +47,165 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
 
   Future<void> _loadAllData() async {
     setState(() => _isLoading = true);
-    
+
     try {
+      final user = await _profileService.getUserProfile();
+      _motherName = user?.name ?? 'Mother';
+
       final scheduleFuture = _appointmentService.getMySchedule();
       final childrenFuture = _childService.getMyChildren();
-      
       final results = await Future.wait([scheduleFuture, childrenFuture]);
-      
+
       _scheduleData = results[0] as ScheduleData?;
       _children = results[1] as List<dynamic>;
-      
-      debugPrint('Schedule Data: ${_scheduleData?.visits.length} visits, ${_scheduleData?.vaccines.length} vaccines');
-      
-      // Fetch vaccines for each child
-      for (var child in _children) {
-        final childId = child['_id'];
-        final vaccines = await _appointmentService.getChildVaccinations(childId);
-        _childVaccines[childId] = vaccines;
-        debugPrint('Child ${child['name']}: ${vaccines.length} vaccines');
+
+      _childVaccines.clear();
+      for (final child in _children) {
+        final childId = child['_id']?.toString();
+        if (childId != null) {
+          _childVaccines[childId] =
+              await _appointmentService.getChildVaccinations(childId);
+        }
       }
     } catch (e) {
       debugPrint('Error loading appointment data: $e');
     }
 
-    setState(() {
-      _isLoading = false;
-    });
+    if (mounted) setState(() => _isLoading = false);
+  }
+
+  void _showClinicNotice(String action) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '$action must be done at your health center. Please contact your clinic.',
+        ),
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: AppointmentTheme.brownDark,
+      ),
+    );
+  }
+
+  void _showReminderSnack(String item) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Reminder noted for $item. You will be notified before the appointment.'),
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      appBar: AppBar(
-        title: const Text('Schedule & Appointments', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.white,
-        foregroundColor: AppColors.text,
-        elevation: 0,
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: AppColors.primary,
-          unselectedLabelColor: AppColors.textSecondary,
-          indicatorColor: AppColors.primary,
-          indicatorWeight: 3,
-          isScrollable: true,
-          tabs: const [
-            Tab(text: 'Pregnancy Visits'),
-            Tab(text: 'Maternal Vaccines'),
-            Tab(text: 'Child Vaccines'),
-          ],
-        ),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
-              controller: _tabController,
-              children: [
-                _buildVisitsTab(),
-                _buildMaternalVaccinesTab(),
-                _buildChildVaccinesTab(),
-              ],
+      backgroundColor: AppointmentTheme.background,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          const SliverToBoxAdapter(child: AppointmentsHeader()),
+          SliverPersistentHeader(
+            pinned: true,
+            delegate: _TabBarDelegate(
+              TabBar(
+                controller: _tabController,
+                labelColor: AppointmentTheme.brownDark,
+                unselectedLabelColor: Colors.grey.shade600,
+                indicatorColor: AppointmentTheme.brown,
+                indicatorWeight: 3,
+                labelStyle: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                ),
+                isScrollable: true,
+                tabs: const [
+                  Tab(text: 'Pregnancy Visits'),
+                  Tab(text: 'Maternal Vaccination'),
+                  Tab(text: 'Child Vaccination'),
+                ],
+              ),
             ),
+          ),
+        ],
+        body: _isLoading
+            ? const Center(
+                child: CircularProgressIndicator(color: AppointmentTheme.brown),
+              )
+            : TabBarView(
+                controller: _tabController,
+                children: [
+                  _buildVisitsTab(),
+                  _buildMaternalVaccinesTab(),
+                  _buildChildVaccinesTab(),
+                ],
+              ),
+      ),
     );
   }
 
   Widget _buildVisitsTab() {
     if (_scheduleData == null || _scheduleData!.visits.isEmpty) {
-      return _buildEmptyState('No pregnancy visits scheduled yet.');
+      return _buildEmptyState(
+        Icons.pregnant_woman_outlined,
+        'No pregnancy visits scheduled yet.',
+        'Your ANC follow-ups will appear here once registered by your health center.',
+      );
     }
 
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
-    
+    final next = _scheduleData!.nextVisit;
+    final warnings = _scheduleData!.warnings;
+
     final upcoming = _scheduleData!.visits.where((v) {
-      return v.visitStatus == 'SCHEDULED' && 
-             (v.visitDate.isAfter(today) || 
-              (v.visitDate.year == today.year && v.visitDate.month == today.month && v.visitDate.day == today.day));
+      return v.visitStatus == 'SCHEDULED' &&
+          !v.visitDate.isBefore(today);
     }).toList();
-    
-    final completed = _scheduleData!.visits.where((v) => v.visitStatus == 'COMPLETED').toList();
-    
+
+    final completed = _scheduleData!.visits
+        .where((v) => v.visitStatus == 'COMPLETED')
+        .toList()
+      ..sort((a, b) => b.visitDate.compareTo(a.visitDate));
+
     final missed = _scheduleData!.visits.where((v) {
-      return v.visitStatus == 'MISSED' || 
-             (v.visitStatus == 'SCHEDULED' && v.visitDate.isBefore(today));
+      return v.visitStatus == 'MISSED' ||
+          (v.visitStatus == 'SCHEDULED' && v.visitDate.isBefore(today));
     }).toList();
 
     return RefreshIndicator(
+      color: AppointmentTheme.brown,
       onRefresh: _loadAllData,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (next != null)
+            ReminderBanner(
+              message:
+                  'Your next ANC visit is on ${DateFormat('EEEE, MMM d').format(next.visitDate)} (Week ${next.week}).',
+              icon: Icons.event_available,
+            ),
+          ...warnings.map(
+            (w) => ReminderBanner(
+              message: w,
+              icon: Icons.info_outline,
+              accentColor: const Color(0xFFFF9800),
+            ),
+          ),
+          if (next != null) ...[
+            _sectionTitle('Next Visit'),
+            VisitCard(visit: next, isNext: true),
+          ],
           if (upcoming.isNotEmpty) ...[
-            _buildSectionHeader('Upcoming Visits'),
-            ...upcoming.map((v) => _buildVisitCard(v, AppColors.primary)),
-            const SizedBox(height: 20),
+            _sectionTitle('Upcoming Visits'),
+            ...upcoming
+                .where((v) => next == null || v.id != next.id)
+                .map((v) => VisitCard(visit: v)),
           ],
           if (missed.isNotEmpty) ...[
-            _buildSectionHeader('Missed / Overdue'),
-            ...missed.map((v) => _buildVisitCard(v, AppColors.error)),
-            const SizedBox(height: 20),
+            _sectionTitle('Missed / Overdue'),
+            ...missed.map((v) => VisitCard(visit: v)),
           ],
           if (completed.isNotEmpty) ...[
-            _buildSectionHeader('Previous Visits'),
-            ...completed.map((v) => _buildVisitCard(v, Colors.green)),
+            _sectionTitle('Previous Visits'),
+            ...completed.map((v) => VisitCard(visit: v)),
           ],
         ],
       ),
@@ -148,27 +213,44 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
   }
 
   Widget _buildMaternalVaccinesTab() {
-    if (_scheduleData == null || _scheduleData!.vaccines.isEmpty) {
-      return _buildEmptyState('No maternal vaccines recorded.');
+    final vaccines = _scheduleData?.vaccines ?? [];
+    final slots = TdScheduleSlot.buildFromRecords(vaccines);
+
+    if (vaccines.isEmpty && slots.every((s) => s.record == null)) {
+      return _buildEmptyState(
+        Icons.vaccines_outlined,
+        'No maternal vaccinations recorded yet.',
+        'TD1–TD5 tetanus doses will appear here when scheduled by your health worker.',
+      );
     }
 
-    final given = _scheduleData!.vaccines.where((v) => v.status == 'GIVEN').toList();
-    final scheduled = _scheduleData!.vaccines.where((v) => v.status == 'SCHEDULED').toList();
+    final given = vaccines.where((v) => v.status == 'GIVEN').length;
+    final scheduled = vaccines.where((v) => v.status == 'SCHEDULED').length;
+    final missed = vaccines.where((v) => v.status == 'MISSED').length;
 
     return RefreshIndicator(
+      color: AppointmentTheme.brown,
       onRefresh: _loadAllData,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          if (scheduled.isNotEmpty) ...[
-            _buildSectionHeader('Upcoming Vaccinations'),
-            ...scheduled.map((v) => _buildMaternalVaccineCard(v, AppColors.secondary)),
-            const SizedBox(height: 20),
-          ],
-          if (given.isNotEmpty) ...[
-            _buildSectionHeader('Completed Vaccinations'),
-            ...given.map((v) => _buildMaternalVaccineCard(v, Colors.green)),
-          ],
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: AppointmentTheme.cardDecoration,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _miniStat('Completed', given, AppointmentTheme.administered),
+                _miniStat('Scheduled', scheduled, AppointmentTheme.scheduled),
+                _miniStat('Missed', missed, AppointmentTheme.missed),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          MaternalVaccineTimeline(
+            slots: slots,
+            allVaccines: vaccines,
+          ),
         ],
       ),
     );
@@ -176,229 +258,174 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
 
   Widget _buildChildVaccinesTab() {
     if (_children.isEmpty) {
-      return _buildEmptyState('No children registered yet.');
+      return _buildEmptyState(
+        Icons.child_care_outlined,
+        'No children registered yet.',
+        'Child vaccination schedules appear after your baby is registered at a health facility.',
+      );
     }
 
     return RefreshIndicator(
+      color: AppointmentTheme.brown,
       onRefresh: _loadAllData,
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          ..._children.map((child) {
-            final childId = child['_id'];
-            final vaccines = _childVaccines[childId] ?? [];
-            
-            if (vaccines.isEmpty) return const SizedBox.shrink();
-
-            final upcoming = vaccines.where((v) => v['status'] == 'SCHEDULED').toList();
-            final completed = vaccines.where((v) => v['status'] == 'ADMINISTERED').toList();
-            final missed = vaccines.where((v) => v['status'] == 'MISSED').toList();
-
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${child['name']}\'s Schedule',
-                    style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                if (upcoming.isNotEmpty) ...[
-                  _buildSectionHeader('Upcoming'),
-                  ...upcoming.map((v) => _buildChildVaccineCard(v, AppColors.primary)),
-                  const SizedBox(height: 16),
-                ],
-                if (missed.isNotEmpty) ...[
-                  _buildSectionHeader('Missed'),
-                  ...missed.map((v) => _buildChildVaccineCard(v, AppColors.error)),
-                  const SizedBox(height: 16),
-                ],
-                if (completed.isNotEmpty) ...[
-                  _buildSectionHeader('Completed'),
-                  ...completed.map((v) => _buildChildVaccineCard(v, Colors.green)),
-                  const SizedBox(height: 16),
-                ],
-                const SizedBox(height: 24),
-              ],
-            );
-          }).toList(),
+          ..._children.map((child) => _buildChildSection(child)),
         ],
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildChildSection(dynamic child) {
+    final childId = child['_id']?.toString() ?? '';
+    final vaccines = _childVaccines[childId] ?? [];
+    final administered =
+        vaccines.where((v) => v['status'] == 'ADMINISTERED').length;
+    final scheduled = vaccines.where((v) => v['status'] == 'SCHEDULED').length;
+    final missed = vaccines.where((v) => v['status'] == 'MISSED').length;
+
+    final upcoming = vaccines.where((v) => v['status'] == 'SCHEDULED').toList()
+      ..sort((a, b) => DateTime.parse(a['scheduledDate'].toString())
+          .compareTo(DateTime.parse(b['scheduledDate'].toString())));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (upcoming.isNotEmpty) ...[
+          Builder(builder: (_) {
+            final next = upcoming.first;
+            final vName = next['vaccineId'] is Map
+                ? next['vaccineId']['name']
+                : 'vaccination';
+            return ReminderBanner(
+              message:
+                  'Upcoming: $vName for ${child['name']} on ${DateFormat('MMM d').format(DateTime.parse(next['scheduledDate'].toString()))}.',
+              icon: Icons.child_care,
+            );
+          }),
+        ],
+        ChildProfileCard(
+          child: child,
+          motherName: _motherName,
+          administered: administered,
+          scheduled: scheduled,
+          missed: missed,
+        ),
+        if (vaccines.isEmpty)
+          _emptyChildVaccines()
+        else ...[
+          _sectionTitle('Vaccination Records'),
+          ..._sortedVaccines(vaccines).map((record) {
+            final name = record['vaccineId'] is Map
+                ? record['vaccineId']['name']?.toString() ?? 'vaccine'
+                : 'vaccine';
+            return ChildVaccineCard(
+              record: record,
+              onRemind: () => _showReminderSnack(name),
+              onViewDetails: () => _showClinicNotice('Vaccination'),
+            );
+          }),
+        ],
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  List<dynamic> _sortedVaccines(List<dynamic> vaccines) {
+    final copy = List<dynamic>.from(vaccines);
+    copy.sort((a, b) {
+      const order = {'SCHEDULED': 0, 'MISSED': 1, 'ADMINISTERED': 2};
+      final sa = order[a['status']] ?? 3;
+      final sb = order[b['status']] ?? 3;
+      if (sa != sb) return sa.compareTo(sb);
+      return DateTime.parse(a['scheduledDate'].toString())
+          .compareTo(DateTime.parse(b['scheduledDate'].toString()));
+    });
+    return copy;
+  }
+
+  Widget _miniStat(String label, int count, Color color) {
+    return Column(
+      children: [
+        Text('$count',
+            style: TextStyle(
+                fontSize: 22, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey.shade600)),
+      ],
+    );
+  }
+
+  Widget _sectionTitle(String title) {
     return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 12),
+      padding: const EdgeInsets.only(left: 4, bottom: 12, top: 8),
       child: Text(
         title.toUpperCase(),
         style: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: AppColors.textSecondary,
-          letterSpacing: 1.1,
+          color: AppointmentTheme.brownDark,
+          letterSpacing: 1.0,
         ),
       ),
     );
   }
 
-  Widget _buildVisitCard(PregnancyVisit visit, Color statusColor) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
+  Widget _emptyChildVaccines() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Text(
+        'No vaccination records yet for this child.',
+        style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
       ),
-      child: IntrinsicHeight(
-        child: Row(
+    );
+  }
+
+  Widget _buildEmptyState(IconData icon, String title, String subtitle) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 6,
-              decoration: BoxDecoration(
-                color: statusColor,
-                borderRadius: const BorderRadius.only(topLeft: Radius.circular(16), bottomLeft: Radius.circular(16)),
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          visit.visitType,
-                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: statusColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            visit.visitStatus,
-                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        const Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.textSecondary),
-                        const SizedBox(width: 8),
-                        Text(
-                          DateFormat('EEEE, MMM d, yyyy').format(visit.visitDate),
-                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.info_outline, size: 14, color: AppColors.textSecondary),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Week ${visit.week} • ${visit.riskLevel} Risk',
-                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            Icon(icon, size: 72, color: AppointmentTheme.brownLight),
+            const SizedBox(height: 16),
+            Text(title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                    fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 8),
+            Text(subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
           ],
         ),
       ),
     );
   }
+}
 
-  Widget _buildMaternalVaccineCard(MaternalVaccine vaccine, Color statusColor) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: statusColor.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(Icons.vaccines_outlined, color: statusColor),
-        ),
-        title: Text(vaccine.vaccineName, style: const TextStyle(fontWeight: FontWeight.bold)),
-        subtitle: Text('Dose #${vaccine.doseNumber} • ${DateFormat('MMM d, yyyy').format(vaccine.givenDate)}'),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: statusColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Text(
-            vaccine.status,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor),
-          ),
-        ),
-      ),
+class _TabBarDelegate extends SliverPersistentHeaderDelegate {
+  final TabBar tabBar;
+
+  _TabBarDelegate(this.tabBar);
+
+  @override
+  double get minExtent => tabBar.preferredSize.height;
+
+  @override
+  double get maxExtent => tabBar.preferredSize.height;
+
+  @override
+  Widget build(
+      BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Material(
+      color: Colors.white,
+      elevation: overlapsContent ? 2 : 0,
+      child: tabBar,
     );
   }
 
-  Widget _buildChildVaccineCard(dynamic record, Color statusColor) {
-    final vaccine = record['vaccineId'];
-    final name = vaccine != null ? vaccine['name'] : 'Unknown Vaccine';
-    final date = DateTime.parse(record['scheduledDate']);
-    final dose = record['doseNumber'] ?? 1;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.divider.withOpacity(0.5)),
-      ),
-      child: ListTile(
-        dense: true,
-        leading: Icon(Icons.baby_changing_station, color: statusColor, size: 20),
-        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-        subtitle: Text('Dose #$dose • ${DateFormat('MMM d, yyyy').format(date)}', style: const TextStyle(fontSize: 12)),
-        trailing: Text(
-          record['status'],
-          style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: statusColor),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(String message) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.event_note, size: 64, color: AppColors.textSecondary.withOpacity(0.3)),
-          const SizedBox(height: 16),
-          Text(message, style: const TextStyle(color: AppColors.textSecondary)),
-        ],
-      ),
-    );
-  }
+  @override
+  bool shouldRebuild(covariant _TabBarDelegate oldDelegate) => false;
 }
