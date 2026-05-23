@@ -1,0 +1,33 @@
+[33m9427ae5[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mbeza-branch[m[33m)[m HEAD@{0}: commit: maternal vaccination updated
+[33m7ddec08[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/beza-branch[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{1}: checkout: moving from main to beza-branch
+[33m9bfb626[m[33m ([m[1;32mmain[m[33m)[m HEAD@{2}: checkout: moving from beza-branch to main
+[33m7ddec08[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/beza-branch[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{3}: checkout: moving from main to beza-branch
+[33m9bfb626[m[33m ([m[1;32mmain[m[33m)[m HEAD@{4}: commit: mother vaccination updated
+[33m7ddec08[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/beza-branch[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{5}: checkout: moving from beza-branch to main
+[33m7ddec08[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/beza-branch[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{6}: checkout: moving from main to beza-branch
+[33m7ddec08[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/beza-branch[m[33m, [m[1;31morigin/HEAD[m[33m)[m HEAD@{7}: commit (amend): Appointment updates
+[33m1dbc0a4[m HEAD@{8}: commit: your commit message
+[33md92b7ac[m[33m ([m[1;31morigin/martty_branch[m[33m)[m HEAD@{9}: reset: moving to HEAD
+[33md92b7ac[m[33m ([m[1;31morigin/martty_branch[m[33m)[m HEAD@{10}: reset: moving to HEAD
+[33md92b7ac[m[33m ([m[1;31morigin/martty_branch[m[33m)[m HEAD@{11}: commit: profile page integrated
+[33mc6bb952[m HEAD@{12}: Branch: renamed refs/heads/beza-branch to refs/heads/main
+[33mc6bb952[m HEAD@{14}: checkout: moving from main to beza-branch
+[33m526bacb[m HEAD@{15}: commit (merge): Resolved merge conflicts using local version
+[33m86e4769[m HEAD@{16}: checkout: moving from beza-branch to main
+[33mc6bb952[m HEAD@{17}: commit: profile integrated
+[33m5945b2f[m HEAD@{18}: commit: Initial maternal system update
+[33mb015ca8[m HEAD@{19}: reset: moving to origin/martty_branch
+[33m77aa8de[m HEAD@{20}: checkout: moving from beza-branch to beza-branch
+[33m77aa8de[m HEAD@{21}: reset: moving to HEAD
+[33m77aa8de[m HEAD@{22}: reset: moving to origin/beza-branch
+[33mb015ca8[m HEAD@{23}: checkout: moving from beza-branch to beza-branch
+[33mb015ca8[m HEAD@{24}: reset: moving to HEAD
+[33mb015ca8[m HEAD@{25}: reset: moving to origin/martty_branch
+[33m77aa8de[m HEAD@{26}: reset: moving to HEAD
+[33m77aa8de[m HEAD@{27}: reset: moving to HEAD
+[33m77aa8de[m HEAD@{28}: reset: moving to 77aa8de
+[33m77aa8de[m HEAD@{29}: checkout: moving from beza-branch to beza-branch
+[33m77aa8de[m HEAD@{30}: checkout: moving from beza-branch to beza-branch
+[33m77aa8de[m HEAD@{31}: checkout: moving from beza-branch to beza-branch
+[33m77aa8de[m HEAD@{32}: checkout: moving from main to beza-branch
+[33m86e4769[m HEAD@{33}: clone: from https://github.com/bezimamo/smart-maternal-system.git

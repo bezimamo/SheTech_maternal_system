@@ -149,4 +149,48 @@ export class EmailService {
       this.logger.error(`Failed to send pregnancy visit email to ${to}: ${error.message}`);
     }
   }
+
+  async sendMotherVaccinationReminder(
+    to: string,
+    motherName: string,
+    doseNumber: number,
+    scheduledDate: Date,
+  ): Promise<void> {
+    const dateStr = scheduledDate.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
+
+    const html = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <div style="background: #7c3aed; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+          <h2 style="margin: 0;">💉 Maternal Vaccination Reminder</h2>
+          <p style="margin: 5px 0 0 0; opacity: 0.9;">Smart Maternal Health System</p>
+        </div>
+        <div style="background: #f8fafc; padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px;">
+          <p style="color: #374151; font-size: 16px;">Dear <strong>${motherName}</strong>,</p>
+          <p style="color: #374151;">Your tetanus toxoid (TD) vaccination appointment is coming up:</p>
+          <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+            <p style="margin: 0 0 8px 0;"><strong>Dose:</strong> TD${doseNumber}</p>
+            <p style="margin: 0;"><strong>Date:</strong> ${dateStr}</p>
+          </div>
+          <p style="color: #374151;">Please visit your health center on the scheduled date.</p>
+        </div>
+      </div>
+    `;
+
+    try {
+      await this.transporter.sendMail({
+        from: `"Smart Maternal Health" <${process.env.SMTP_USER}>`,
+        to,
+        subject: `TD${doseNumber} Vaccination Reminder — ${dateStr}`,
+        html,
+      });
+      this.logger.log(`Mother vaccination reminder email sent to ${to}`);
+    } catch (error) {
+      this.logger.error(`Failed to send mother vaccination email to ${to}: ${error.message}`);
+    }
+  }
 }

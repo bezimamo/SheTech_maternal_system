@@ -27,6 +27,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
 
   late TabController _tabController;
   ScheduleData? _scheduleData;
+  MotherVaccinationScheduleData? _motherVaccinationSchedule;
   List<dynamic> _children = [];
   final Map<String, List<dynamic>> _childVaccines = {};
   String _motherName = '';
@@ -53,11 +54,17 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
       _motherName = user?.name ?? 'Mother';
 
       final scheduleFuture = _appointmentService.getMySchedule();
+      final motherVaccinesFuture = _appointmentService.getMyMotherVaccinations();
       final childrenFuture = _childService.getMyChildren();
-      final results = await Future.wait([scheduleFuture, childrenFuture]);
+      final results = await Future.wait([
+        scheduleFuture,
+        motherVaccinesFuture,
+        childrenFuture,
+      ]);
 
       _scheduleData = results[0] as ScheduleData?;
-      _children = results[1] as List<dynamic>;
+      _motherVaccinationSchedule = results[1] as MotherVaccinationScheduleData?;
+      _children = results[2] as List<dynamic>;
 
       _childVaccines.clear();
       for (final child in _children) {
@@ -213,8 +220,15 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
   }
 
   Widget _buildMaternalVaccinesTab() {
-    final vaccines = _scheduleData?.vaccines ?? [];
-    final slots = TdScheduleSlot.buildFromRecords(vaccines);
+    final vaccines = _motherVaccinationSchedule?.vaccines.isNotEmpty == true
+        ? _motherVaccinationSchedule!.vaccines
+        : (_scheduleData?.vaccines ?? []);
+    final apiSlots = _motherVaccinationSchedule?.vaccineSchedule ?? [];
+    final slots = apiSlots.isNotEmpty
+        ? TdScheduleSlot.buildFromApiSchedule(apiSlots)
+        : TdScheduleSlot.buildFromRecords(vaccines);
+    final warnings = _motherVaccinationSchedule?.warnings ?? [];
+    final nextAppt = _motherVaccinationSchedule?.nextAppointment;
 
     if (vaccines.isEmpty && slots.every((s) => s.record == null)) {
       return _buildEmptyState(
@@ -234,6 +248,32 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          if (nextAppt != null && nextAppt['scheduledDate'] != null)
+            ReminderBanner(
+              message: () {
+                final date = DateTime.parse(nextAppt['scheduledDate'].toString());
+                final days = date.difference(DateTime(
+                  DateTime.now().year,
+                  DateTime.now().month,
+                  DateTime.now().day,
+                )).inDays;
+                final countdown = days == 0
+                    ? 'today'
+                    : days == 1
+                        ? 'tomorrow'
+                        : 'in $days days';
+                final label = nextAppt['label'] ?? 'TD dose';
+                return 'Upcoming: $label on ${DateFormat('dd/MM/yyyy').format(date)} ($countdown).';
+              }(),
+              icon: Icons.vaccines,
+            ),
+          ...warnings.map(
+            (w) => ReminderBanner(
+              message: w,
+              icon: Icons.warning_amber_rounded,
+              accentColor: const Color(0xFFFF9800),
+            ),
+          ),
           Container(
             padding: const EdgeInsets.all(16),
             decoration: AppointmentTheme.cardDecoration,

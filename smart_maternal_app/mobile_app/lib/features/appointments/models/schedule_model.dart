@@ -190,7 +190,8 @@ class TdScheduleSlot {
       for (final v in vaccines) {
         if (v.doseNumber == dose ||
             v.vaccineName.toUpperCase().contains('TT$dose') ||
-            v.vaccineName == 'TT$dose') {
+            v.vaccineName == 'TT$dose' ||
+            v.vaccineName.toUpperCase().contains('TD$dose')) {
           match = v;
           break;
         }
@@ -201,5 +202,96 @@ class TdScheduleSlot {
         record: match,
       );
     });
+  }
+
+  static List<TdScheduleSlot> buildFromApiSchedule(List<TdVaccineSlot> apiSlots) {
+    return apiSlots.map((s) {
+      MaternalVaccine? record;
+      if (s.status != 'NOT_SCHEDULED') {
+        record = MaternalVaccine(
+          id: s.visitId ?? '',
+          vaccineName: s.vaccineName,
+          doseNumber: s.doseNumber,
+          givenDate: s.visitDate ?? s.targetDate ?? DateTime.now(),
+          nextDoseDate: s.targetDate,
+          status: s.status == 'GIVEN' ? 'GIVEN' : s.status,
+        );
+      }
+      return TdScheduleSlot(
+        doseNumber: s.doseNumber,
+        label: s.label,
+        record: record,
+      );
+    }).toList();
+  }
+}
+
+class TdVaccineSlot {
+  final String vaccineName;
+  final int doseNumber;
+  final String label;
+  final String status;
+  final DateTime? visitDate;
+  final DateTime? targetDate;
+  final String? visitId;
+
+  TdVaccineSlot({
+    required this.vaccineName,
+    required this.doseNumber,
+    required this.label,
+    required this.status,
+    this.visitDate,
+    this.targetDate,
+    this.visitId,
+  });
+
+  factory TdVaccineSlot.fromJson(Map<String, dynamic> json) {
+    return TdVaccineSlot(
+      vaccineName: json['vaccineName'] ?? 'Tetanus Toxoid (TD)',
+      doseNumber: json['doseNumber'] ?? 0,
+      label: json['label'] ?? '',
+      status: json['status'] ?? 'NOT_SCHEDULED',
+      visitDate: json['visitDate'] != null
+          ? DateTime.parse(json['visitDate'].toString())
+          : null,
+      targetDate: json['targetDate'] != null
+          ? DateTime.parse(json['targetDate'].toString())
+          : null,
+      visitId: json['visitId']?.toString(),
+    );
+  }
+}
+
+class MotherVaccinationScheduleData {
+  final String motherId;
+  final List<MaternalVaccine> vaccines;
+  final List<TdVaccineSlot> vaccineSchedule;
+  final Map<String, dynamic>? nextAppointment;
+  final List<String> warnings;
+
+  MotherVaccinationScheduleData({
+    required this.motherId,
+    required this.vaccines,
+    required this.vaccineSchedule,
+    this.nextAppointment,
+    required this.warnings,
+  });
+
+  factory MotherVaccinationScheduleData.fromJson(Map<String, dynamic> json) {
+    return MotherVaccinationScheduleData(
+      motherId: json['motherId']?.toString() ?? '',
+      vaccines: (json['vaccines'] as List? ?? [])
+          .map((v) => MaternalVaccine.fromJson(
+              v is Map<String, dynamic> ? v : Map<String, dynamic>.from(v)))
+          .toList(),
+      vaccineSchedule: (json['vaccineSchedule'] as List? ?? [])
+          .map((v) => TdVaccineSlot.fromJson(
+              v is Map<String, dynamic> ? v : Map<String, dynamic>.from(v)))
+          .toList(),
+      nextAppointment: json['nextAppointment'] is Map
+          ? Map<String, dynamic>.from(json['nextAppointment'] as Map)
+          : null,
+      warnings: List<String>.from(json['warnings'] ?? []),
+    );
   }
 }

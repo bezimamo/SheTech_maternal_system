@@ -207,6 +207,31 @@ export const childrenApi = {
     fetch(`${API_BASE}/children/growth-records/${id}`, getFetchOptions('DELETE')).then(handleResponse),
 };
 
+// Mother TD Vaccination APIs (dedicated mother vaccination records)
+export const motherVaccinationsApi = {
+  getSchedule: (motherId: string) =>
+    fetch(`${API_BASE}/mothers/vaccinations/schedule/${motherId}`, getFetchOptions()).then(handleResponse),
+
+  getHistory: (motherId: string) =>
+    fetch(`${API_BASE}/mothers/vaccinations/history/${motherId}`, getFetchOptions()).then(handleResponse),
+
+  recordDose: (data: {
+    motherId: string;
+    doseNumber: number;
+    administeredDate: string;
+    batchNumber?: string;
+    notes?: string;
+    hospitalId?: string;
+  }) =>
+    fetch(`${API_BASE}/mothers/vaccinations/record`, getFetchOptions('POST', data)).then(handleResponse),
+
+  getTdReference: () =>
+    fetch(`${API_BASE}/mothers/vaccinations/schedule/td-doses`, getFetchOptions()).then(handleResponse),
+
+  triggerReminders: () =>
+    fetch(`${API_BASE}/mothers/vaccinations/reminders/trigger`, getFetchOptions('POST')).then(handleResponse),
+};
+
 // Vaccination APIs
 export const vaccinationsApi = {
   // Vaccines

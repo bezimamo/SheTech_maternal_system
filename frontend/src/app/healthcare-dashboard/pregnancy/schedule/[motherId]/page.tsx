@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { pregnancyApi, mothersApi } from '@/lib/healthcare-api';
+import { pregnancyApi, mothersApi, motherVaccinationsApi } from '@/lib/healthcare-api';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -39,6 +39,22 @@ interface FullSchedule {
   vaccines: Vaccine[];
   nextVisit: Visit | null;
   overdueVisits: Visit[];
+  warnings: string[];
+}
+
+interface TdSlot {
+  doseNumber: number;
+  label: string;
+  status: string;
+  visitDate?: string;
+  targetDate?: string;
+  visitId?: string;
+}
+
+interface MotherVaccineSchedule {
+  vaccines: Vaccine[];
+  vaccineSchedule: TdSlot[];
+  nextAppointment?: { doseNumber: number; scheduledDate: string; label: string };
   warnings: string[];
 }
 
@@ -86,6 +102,7 @@ export default function AncSchedulePage() {
 
   const [mother, setMother] = useState<any>(null);
   const [schedule, setSchedule] = useState<FullSchedule | null>(null);
+  const [motherVaccineSchedule, setMotherVaccineSchedule] = useState<MotherVaccineSchedule | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'timeline' | 'vaccines'>('timeline');
@@ -118,18 +135,31 @@ export default function AncSchedulePage() {
   // Complete action
   const [completing, setCompleting] = useState<string | null>(null);
 
+  // Record TD dose
+  const [showRecordVaccine, setShowRecordVaccine] = useState(false);
+  const [recordDoseForm, setRecordDoseForm] = useState({
+    doseNumber: 1,
+    administeredDate: new Date().toISOString().split('T')[0],
+    batchNumber: '',
+    notes: '',
+  });
+  const [recordingVaccine, setRecordingVaccine] = useState(false);
+  const [vaccineError, setVaccineError] = useState<string | null>(null);
+
   useEffect(() => { load(); }, [motherId]);
 
   const load = async () => {
     try {
       setLoading(true);
       setError(null);
-      const [mothers, sched] = await Promise.all([
+      const [mothers, sched, motherVac] = await Promise.all([
         mothersApi.getAll(),
         pregnancyApi.getFullSchedule(motherId),
+        motherVaccinationsApi.getSchedule(motherId).catch(() => null),
       ]);
       setMother(mothers.find((m: any) => m._id === motherId) ?? null);
       setSchedule(sched);
+      setMotherVaccineSchedule(motherVac);
     } catch (err: any) {
       setError(err.message || 'Failed to load schedule');
     } finally {
@@ -164,6 +194,33 @@ export default function AncSchedulePage() {
       setRescheduleError(err.message || 'Failed to reschedule');
     } finally {
       setRescheduling(false);
+    }
+  };
+
+  const handleRecordVaccine = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setRecordingVaccine(true);
+    setVaccineError(null);
+    try {
+      await motherVaccinationsApi.recordDose({
+        motherId,
+        doseNumber: recordDoseForm.doseNumber,
+        administeredDate: recordDoseForm.administeredDate,
+        batchNumber: recordDoseForm.batchNumber || undefined,
+        notes: recordDoseForm.notes || undefined,
+      });
+      setShowRecordVaccine(false);
+      setRecordDoseForm({
+        doseNumber: 1,
+        administeredDate: new Date().toISOString().split('T')[0],
+        batchNumber: '',
+        notes: '',
+      });
+      await load();
+    } catch (err: any) {
+      setVaccineError(err.message || 'Failed to record vaccination');
+    } finally {
+      setRecordingVaccine(false);
     }
   };
 
@@ -213,7 +270,12 @@ export default function AncSchedulePage() {
     </div>
   );
 
-  const { visits = [], vaccines = [], nextVisit, overdueVisits = [], warnings = [] } = schedule ?? {};
+  const { visits = [], vaccines: legacyVaccines = [], nextVisit, overdueVisits = [], warnings = [] } = schedule ?? {};
+  const vaccines = motherVaccineSchedule?.vaccines?.length
+    ? motherVaccineSchedule.vaccines
+    : legacyVaccines;
+  const tdSchedule = motherVaccineSchedule?.vaccineSchedule ?? [];
+  const vaccineWarnings = motherVaccineSchedule?.warnings ?? [];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -395,11 +457,59 @@ export default function AncSchedulePage() {
 
           {/* Vaccines */}
           {activeTab === 'vaccines' && (
-            <div className="p-6">
+            <div className="p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold text-gray-900">TD Vaccination (TD1–TD5)</h3>
+                <button
+                  onClick={() => setShowRecordVaccine(true)}
+                  className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
+                >
+                  + Record TD Dose
+                </button>
+              </div>
+
+              {motherVaccineSchedule?.nextAppointment && (
+                <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-800">
+                  Next: {motherVaccineSchedule.nextAppointment.label} on{' '}
+                  {fmt(motherVaccineSchedule.nextAppointment.scheduledDate)} (
+                  {daysUntil(motherVaccineSchedule.nextAppointment.scheduledDate)})
+                </div>
+              )}
+
+              {vaccineWarnings.map((w, i) => (
+                <div key={i} className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                  {w}
+                </div>
+              ))}
+
+              {tdSchedule.length > 0 && (
+                <div className="grid gap-2">
+                  {tdSchedule.map(slot => (
+                    <div key={slot.doseNumber} className="flex items-center justify-between border rounded-lg p-3 bg-white">
+                      <div>
+                        <p className="font-medium text-gray-900">{slot.label}</p>
+                        <p className="text-xs text-gray-500">
+                          {slot.visitDate ? fmt(slot.visitDate) : slot.targetDate ? `Target: ${fmt(slot.targetDate)}` : 'Not scheduled'}
+                        </p>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                        slot.status === 'GIVEN' ? 'bg-green-100 text-green-800' :
+                        slot.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-800' :
+                        slot.status === 'MISSED' ? 'bg-red-100 text-red-800' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {slot.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {vaccines.length === 0 ? (
-                <p className="text-center text-gray-400 py-12">No vaccines recorded yet</p>
+                <p className="text-center text-gray-400 py-8">No vaccines recorded yet</p>
               ) : (
                 <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">All Records</h4>
                   {(vaccines as Vaccine[]).map(v => (
                     <div key={v._id} className="border border-gray-200 rounded-lg p-4 bg-white">
                       <div className="flex items-center justify-between">
@@ -408,9 +518,6 @@ export default function AncSchedulePage() {
                           <p className="text-sm text-gray-600">Given: {fmt(v.givenDate)}</p>
                           {v.nextDoseDate && (
                             <p className="text-sm text-blue-600">Next dose: {fmt(v.nextDoseDate)} ({daysUntil(v.nextDoseDate)})</p>
-                          )}
-                          {v.manualOverride && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Manual Override</span>
                           )}
                         </div>
                         <span className={`text-xs px-2 py-1 rounded-full font-medium ${
@@ -429,6 +536,82 @@ export default function AncSchedulePage() {
           )}
         </div>
       </main>
+
+      {/* ── Record TD Vaccine Modal ── */}
+      {showRecordVaccine && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Record TD Vaccination</h3>
+            {vaccineError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                {vaccineError}
+              </div>
+            )}
+            <form onSubmit={handleRecordVaccine} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Dose *</label>
+                <select
+                  required
+                  value={recordDoseForm.doseNumber}
+                  onChange={e => setRecordDoseForm(p => ({ ...p, doseNumber: parseInt(e.target.value) }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                >
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <option key={n} value={n}>TD{n}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Administered Date *</label>
+                <input
+                  type="date"
+                  required
+                  value={recordDoseForm.administeredDate}
+                  onChange={e => setRecordDoseForm(p => ({ ...p, administeredDate: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Batch Number</label>
+                <input
+                  type="text"
+                  value={recordDoseForm.batchNumber}
+                  onChange={e => setRecordDoseForm(p => ({ ...p, batchNumber: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  rows={2}
+                  value={recordDoseForm.notes}
+                  onChange={e => setRecordDoseForm(p => ({ ...p, notes: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                />
+              </div>
+              <p className="text-xs text-gray-500">
+                The next TD dose will be scheduled automatically per WHO intervals.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  type="submit"
+                  disabled={recordingVaccine}
+                  className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium disabled:opacity-60"
+                >
+                  {recordingVaccine ? 'Saving…' : 'Record Dose'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowRecordVaccine(false); setVaccineError(null); }}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg text-sm"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ── Reschedule Modal ── */}
       {showReschedule && selectedVisit && (
