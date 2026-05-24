@@ -249,13 +249,17 @@ export default function VaccinationsManagement() {
 
   const handleMarkMissed = async (recordId: string) => {
     const reason = prompt('Please provide reason for missed vaccination:');
-    if (reason) {
+    if (reason?.trim()) {
       try {
-        await vaccinationsApi.markVaccinationMissed(recordId, reason);
-        fetchVaccinationData(); // Refresh data
+        await vaccinationsApi.markVaccinationMissed(recordId, reason.trim());
+        setError(null);
+        alert(
+          'Missed dose recorded on the vaccination card. A catch-up appointment was scheduled. You can continue with the next round of vaccines.',
+        );
+        fetchVaccinationData();
       } catch (err: any) {
         console.error('Error marking as missed:', err);
-        setError('Failed to mark vaccination as missed');
+        setError(err.message || 'Failed to mark vaccination as missed');
       }
     }
   };
@@ -656,6 +660,11 @@ export default function VaccinationsManagement() {
                           <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(record.status)}`}>
                             {getStatusText(record.status)}
                           </span>
+                          {(record as any).isCatchUp && (
+                            <span className="ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-purple-100 text-purple-800">
+                              Catch-up
+                            </span>
+                          )}
                           {record.followUpRequired && (
                             <span className="ml-2 inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
                               Follow-up

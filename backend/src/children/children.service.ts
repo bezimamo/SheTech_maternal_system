@@ -19,14 +19,47 @@ export class ChildrenService {
 
   async findByWoreda(woredaId: string): Promise<Child[]> {
     if (!woredaId) return [];
-    
-    // 1. Find all hospitals belonging to this woreda
-    const hospitals = await this.hospitalModel.find({ woredaId }).select('_id').exec();
+
+    // Cast to ObjectId so Mongoose matches the stored ObjectId field correctly.
+    // If the value is not a valid ObjectId (e.g. a woreda name string), fall back
+    // to a string comparison so the query still runs without throwing.
+    let woredaObjectId: Types.ObjectId | null = null;
+    if (Types.ObjectId.isValid(woredaId)) {
+      woredaObjectId = new Types.ObjectId(woredaId);
+    }
+
+    // 1. Find all hospitals belonging to this woreda (match by ObjectId OR string)
+    const hospitalQuery = woredaObjectId
+      ? { $or: [{ woredaId: woredaObjectId }, { woredaId: woredaId }] }
+      : { woredaId: woredaId };
+
+    const hospitals = await this.hospitalModel.find(hospitalQuery).select('_id').exec();
     const hospitalIds = hospitals.map(h => h._id);
 
-    // 2. Find children born in these hospitals
+    // 2. Find children born in these hospitals OR whose mother belongs to this woreda
+    //    (covers cases where hospital.woredaId is not set but mother.woredaId is)
+    const motherWoredaQuery = woredaObjectId
+      ? { $or: [{ woredaId: woredaObjectId }, { woredaId: woredaId }] }
+      : { woredaId: woredaId };
+
+    const mothers = await this.childModel.db
+      .collection('mothers')
+      .find(motherWoredaQuery, { projection: { _id: 1 } })
+      .toArray();
+    const motherIds = mothers.map((m: any) => m._id);
+
+    const childQuery: any =
+      hospitalIds.length > 0 || motherIds.length > 0
+        ? {
+            $or: [
+              ...(hospitalIds.length > 0 ? [{ birthHospital: { $in: hospitalIds } }] : []),
+              ...(motherIds.length > 0 ? [{ motherId: { $in: motherIds } }] : []),
+            ],
+          }
+        : { _id: null }; // return nothing if no hospitals or mothers found
+
     return this.childModel
-      .find({ birthHospital: { $in: hospitalIds } })
+      .find(childQuery)
       .populate('birthHospital', 'name type address woredaId')
       .populate('motherId', 'name phone age address')
       .populate('deliveredBy', 'name email role')

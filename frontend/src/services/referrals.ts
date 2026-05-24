@@ -32,6 +32,7 @@ export interface Referral {
   decisionMeta?: {
     justification?: string
   }
+  qrCodeUrl?: string
 }
 
 export async function createReferral(payload: any) {
@@ -103,6 +104,11 @@ export async function getReferral(id: string) {
 
 export async function getDraftReferrals() {
   const { data } = await http.get<Referral[]>('/referrals/drafts')
+  return data
+}
+
+export async function generateReferralQrCode(id: string) {
+  const { data } = await http.post<Referral>(`/referrals/${id}/qr-code`)
   return data
 }
 

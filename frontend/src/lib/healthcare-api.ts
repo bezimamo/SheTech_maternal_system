@@ -291,6 +291,10 @@ export const referralsApi = {
   respond: (id: string, data: any) =>
     fetch(`${API_BASE}/referrals/${id}/respond`, getFetchOptions('PATCH', data)).then(handleResponse),
 
+  // Generate QR code (Cloudinary upload + ACCEPTED)
+  generateQrCode: (id: string) =>
+    fetch(`${API_BASE}/referrals/${id}/qr-code`, getFetchOptions('POST')).then(handleResponse),
+
   // Gate check-in
   checkIn: (data: any) =>
     fetch(`${API_BASE}/referrals/gate-check-in`, getFetchOptions('PATCH', data)).then(handleResponse),

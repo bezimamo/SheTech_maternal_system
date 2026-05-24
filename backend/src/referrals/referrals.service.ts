@@ -20,6 +20,8 @@ import { ReferralStatus } from '../common/enums/referral-status.enum';
 import { NotificationService } from './notification.service';
 import { MothersService } from '../mothers/mothers.service';
 import { Hospital, HospitalDocument } from '../hospitals/schemas/hospital.schema';
+import { CloudinaryService } from '../cloudinary/cloudinary.service';
+import * as QRCode from 'qrcode';
 
 @Injectable()
 export class ReferralsService {
@@ -31,7 +33,8 @@ export class ReferralsService {
     private readonly hospitalModel: Model<HospitalDocument>,
 
     private readonly notificationService: NotificationService,
-    private readonly motherService: MothersService, 
+    private readonly motherService: MothersService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {}
 
   // 1. CREATE REFERRAL (Doctor → DRAFT)
@@ -219,18 +222,32 @@ async createSystemReferral(data: {
       throw new ForbiddenException('You are not allowed to send referrals from another facility');
     }
 
-    if (liaisonFacilityId === targetFacilityId) {
-      throw new BadRequestException('Target facility cannot be the same as the originating facility');
-    }
-
     if (referral.status !== ReferralStatus.DRAFT) {
       throw new BadRequestException('Referral already finalized');
     }
 
-    const targetFacility = await this.hospitalModel.findById(targetFacilityId);
+    const resolvedTargetId =
+      targetFacilityId?.trim() ||
+      (referral.toHospital
+        ? (typeof referral.toHospital === 'object'
+            ? (referral.toHospital as any)._id?.toString()
+            : referral.toHospital.toString())
+        : undefined);
+
+    if (!resolvedTargetId) {
+      throw new BadRequestException(
+        'This draft has no destination facility. The referral creator must set a destination before sending.',
+      );
+    }
+
+    if (liaisonFacilityId === resolvedTargetId) {
+      throw new BadRequestException('Target facility cannot be the same as the originating facility');
+    }
+
+    const targetFacility = await this.hospitalModel.findById(resolvedTargetId);
     if (!targetFacility) throw new NotFoundException('Target facility does not exist');
 
-    referral.toHospital = new Types.ObjectId(targetFacilityId) as any;
+    referral.toHospital = new Types.ObjectId(resolvedTargetId) as any;
     referral.toFacilityType = targetFacility.type ?? 'HOSPITAL';
     referral.status = ReferralStatus.PENDING;
     referral.expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
@@ -247,7 +264,7 @@ async createSystemReferral(data: {
 
     try {
       await this.notificationService.notifyReferralSent(
-        saved._id.toString(), targetFacility.name, [targetFacilityId],
+        saved._id.toString(), targetFacility.name, [resolvedTargetId],
       );
     } catch (err) {
       console.error('Notification failed but referral was saved:', err);
@@ -326,6 +343,93 @@ async createSystemReferral(data: {
     }
   }
 
+  /**
+   * Build a PNG buffer encoding the real referral _id and motherId for gate check-in.
+   */
+  private async buildReferralQrBuffer(referral: ReferralDocument): Promise<Buffer> {
+    const payload = JSON.stringify({
+      referralId: referral._id.toString(),
+      motherId: referral.motherId.toString(),
+    });
+
+    return QRCode.toBuffer(payload, {
+      type: 'png',
+      errorCorrectionLevel: 'H',
+      margin: 2,
+      width: 512,
+    });
+  }
+
+  /**
+   * After the QR buffer exists: upload to Cloudinary, persist qrCodeUrl, set ACCEPTED.
+   */
+  async generateAndStoreQrCode(
+    referralId: string,
+    actorId: string,
+    facilityId: string,
+  ): Promise<Referral> {
+    const referral = await this.referralModel.findById(referralId);
+    if (!referral) throw new NotFoundException('Referral not found');
+
+    const fromHospitalId =
+      typeof referral.fromHospital === 'string'
+        ? referral.fromHospital
+        : (referral as any).fromHospital?._id?.toString();
+
+    if (!fromHospitalId || fromHospitalId !== facilityId?.toString()) {
+      throw new ForbiddenException('Only the sending facility can generate the referral QR code');
+    }
+
+    if (!referral.motherId) {
+      throw new BadRequestException('Referral is missing motherId');
+    }
+
+    const allowedStatuses = [
+      ReferralStatus.PENDING,
+      ReferralStatus.ACCEPTED,
+      ReferralStatus.DRAFT,
+    ];
+    if (!allowedStatuses.includes(referral.status)) {
+      throw new BadRequestException(
+        `Cannot generate QR for referral in status ${referral.status}`,
+      );
+    }
+
+    const qrCodeBuffer = await this.buildReferralQrBuffer(referral);
+
+    const upload = await this.cloudinaryService.uploadBuffer(qrCodeBuffer, {
+      folder: 'pregnancy_qr_codes',
+      format: 'png',
+      publicId: `referral-${referral._id}`,
+    });
+
+    referral.qrCodeUrl = upload.secure_url;
+    referral.status = ReferralStatus.ACCEPTED;
+    if (!referral.acceptedAt) {
+      referral.acceptedAt = new Date();
+    }
+
+    referral.activityLog.push({
+      status: ReferralStatus.ACCEPTED,
+      actor: actorId,
+      note: 'QR code generated, uploaded to Cloudinary, and referral accepted',
+      timestamp: new Date(),
+    });
+
+    const saved = await referral.save();
+
+    const populated = await this.referralModel
+      .findById(saved._id)
+      .populate('fromHospital', 'name type location')
+      .populate('toHospital', 'name type location')
+      .populate('motherId', 'name phone age')
+      .populate('createdBy', 'name email role')
+      .exec();
+
+    if (!populated) throw new NotFoundException('Referral not found after QR update');
+    return populated;
+  }
+
   async getIncomingReferrals(facilityId: string): Promise<Referral[]> {
     return this.referralModel.find({
       toHospital: facilityId,
@@ -349,10 +453,24 @@ async createSystemReferral(data: {
     .sort({ gateCheckedInAt: -1, createdAt: -1 });
   }
 
+  /** Resolve referral from legacy referralCode or JSON QR payload `{ referralId, motherId }`. */
+  private async resolveReferralFromScanInput(scanInput: string): Promise<ReferralDocument | null> {
+    const trimmed = scanInput.trim();
+    try {
+      const parsed = JSON.parse(trimmed) as { referralId?: string; motherId?: string };
+      if (parsed?.referralId) {
+        return this.referralModel.findById(parsed.referralId);
+      }
+    } catch {
+      // Not JSON — fall through to referralCode lookup
+    }
+    return this.referralModel.findOne({ referralCode: trimmed });
+  }
+
   // 4. GATE CHECK-IN
   async gateCheckIn(dto: GateCheckInDto, gateOfficerId: string, userHospitalId?: string): Promise<Referral> {
     try {
-      const referral = await this.referralModel.findOne({ referralCode: dto.referralCode });
+      const referral = await this.resolveReferralFromScanInput(dto.referralCode);
       if (!referral) {
         throw new NotFoundException('Referral not found');
       }
@@ -526,6 +644,7 @@ async createSystemReferral(data: {
       .find({ fromHospital: facilityId, status: ReferralStatus.DRAFT })
       .populate('motherId', 'name phone age')
       .populate('createdBy', 'name email')
+      .populate('toHospital', 'name type')
       .sort({ createdAt: -1 });
   }
 
@@ -611,6 +730,11 @@ async createSystemReferral(data: {
           rhFactor: referral.motherSnapshot.rhFactor,
           hivStatus: referral.motherSnapshot.hivStatus,
           hepatitisB: referral.motherSnapshot.hepatitisB,
+          // Risk factors are clinical context the liaison officer needs to do their job
+          hypertension: referral.motherSnapshot.hypertension,
+          diabetes: referral.motherSnapshot.diabetes,
+          anemia: referral.motherSnapshot.anemia,
+          previousCSection: referral.motherSnapshot.previousCSection,
         } as any;
       }
     }

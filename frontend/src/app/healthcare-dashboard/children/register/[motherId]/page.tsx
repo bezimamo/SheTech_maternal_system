@@ -178,14 +178,27 @@ export default function RegisterChild() {
     }
   };
 
+  const [minBirthDate, setMinBirthDate] = useState('');
+
+  // Compute minimum birth date (9 months after mother's registration)
+  useEffect(() => {
+    if (selectedMother?.registrationDate) {
+      const reg = new Date(selectedMother.registrationDate);
+      reg.setMonth(reg.getMonth() + 9);
+      const isoDate = reg.toISOString().split('T')[0]; // format YYYY-MM-DD
+      setMinBirthDate(isoDate);
+    } else {
+      setMinBirthDate('');
+    }
+  }, [selectedMother]);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type, checked } = e.target as HTMLInputElement;
     setFormData(prev => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
+      [name]: type === 'checkbox' ? checked : value,
     }));
   };
-
   const handleSendToWoreda = async () => {
     if (!registeredChildId) return;
     setSendingToWoreda(true);
@@ -204,6 +217,21 @@ export default function RegisterChild() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+
+    // Validate birth date relative to mother's registration date (must be at least 9 months later)
+    if (!selectedMother?.registrationDate) {
+      setError('Mother registration date not found.');
+      setLoading(false);
+      return;
+    }
+    const regDate = new Date(selectedMother.registrationDate);
+    const minBirth = new Date(regDate);
+    minBirth.setMonth(minBirth.getMonth() + 8);
+    if (new Date(formData.birthDate) < minBirth) {
+      setError('Birth date must be at least 8 months after mother\'s registration date.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const childData = {
@@ -388,6 +416,7 @@ export default function RegisterChild() {
                     name="birthDate"
                     value={formData.birthDate}
                     onChange={handleInputChange}
+                    min={minBirthDate}
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
@@ -498,6 +527,7 @@ export default function RegisterChild() {
                     onChange={handleInputChange}
                     min="500"
                     max="6000"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
@@ -514,6 +544,7 @@ export default function RegisterChild() {
                     onChange={handleInputChange}
                     min="30"
                     max="80"
+                    required
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>

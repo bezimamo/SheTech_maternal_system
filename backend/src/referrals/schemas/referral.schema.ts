@@ -172,6 +172,9 @@ export class Referral {
   @Prop()
   gateCheckedInAt?: Date;
 
+  @Prop()
+  qrCodeUrl?: string;
+
   // ─────────────────────────────────────────
   // LIFECYCLE
   // ─────────────────────────────────────────

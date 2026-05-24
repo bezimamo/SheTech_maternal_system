@@ -9,6 +9,7 @@ import { Mother, MotherSchema } from '@/mothers/schemas/mother.schema';
 import { Hospital, HospitalSchema } from 'src/hospitals/schemas/hospital.schema';
 import { MothersModule } from '@/mothers/mothers.module';
 import { HospitalsModule } from '@/hospitals/hospitals.module';
+import { CloudinaryModule } from '../cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { HospitalsModule } from '@/hospitals/hospitals.module';
     ]),
     MothersModule,
     HospitalsModule,
+    CloudinaryModule,
   ],
   providers: [ReferralsService, NotificationService],
   controllers: [ReferralsController],

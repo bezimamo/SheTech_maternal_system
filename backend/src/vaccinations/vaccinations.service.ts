@@ -372,11 +372,125 @@ export class VaccinationsService {
     return this.updateVaccinationRecord(id, updateData, userRole, userHospitalId);
   }
 
-  async markVaccinationMissed(id: string, missReason: string, userRole: string, userHospitalId?: string): Promise<VaccinationRecord> {
-    return this.updateVaccinationRecord(id, {
-      status: 'MISSED',
-      missReason
-    }, userRole, userHospitalId);
+  async markVaccinationMissed(
+    id: string,
+    missReason: string,
+    userRole: string,
+    userHospitalId?: string,
+    userId?: string,
+  ): Promise<VaccinationRecord> {
+    const record = await this.vaccinationRecordModel.findById(id).populate('vaccineId').exec();
+    if (!record) {
+      throw new NotFoundException('Vaccination record not found');
+    }
+
+    const updated = await this.updateVaccinationRecord(
+      id,
+      { status: 'MISSED', missReason },
+      userRole,
+      userHospitalId,
+    );
+
+    // Add catch-up appointment on the vaccination card (same dose, does not block next block)
+    const existingCatchUp = await this.vaccinationRecordModel.findOne({
+      childId: record.childId,
+      vaccineId: record.vaccineId,
+      doseNumber: record.doseNumber,
+      isCatchUp: true,
+      status: 'SCHEDULED',
+    });
+
+    if (!existingCatchUp) {
+      const catchUpDate = new Date();
+      catchUpDate.setDate(catchUpDate.getDate() + 14);
+
+      await this.vaccinationRecordModel.create({
+        childId: record.childId,
+        vaccineId: record.vaccineId,
+        doseNumber: record.doseNumber,
+        scheduledDate: catchUpDate,
+        status: 'SCHEDULED',
+        isCatchUp: true,
+        missReason: `Catch-up for missed dose: ${missReason}`,
+        originalScheduleDate: record.scheduledDate,
+        createdBy: userId ? new Types.ObjectId(userId) : record.createdBy,
+        createdAtHospital: userHospitalId
+          ? new Types.ObjectId(userHospitalId)
+          : record.createdAtHospital,
+        reminderSent: false,
+        reminder3DaySent: false,
+        reminderSameDaySent: false,
+      });
+    }
+
+    // Open the next round: reschedule any overdue next-block records for this child
+    const vaccineCode = (record.vaccineId as any)?.code;
+    if (vaccineCode) {
+      await this.openNextRoundAfterMiss(
+        record.childId.toString(),
+        vaccineCode,
+        record.doseNumber,
+        userHospitalId,
+        userId,
+      );
+    }
+
+    return updated;
+  }
+
+  /**
+   * After a dose is marked MISSED, find all vaccination records for the same child
+   * that belong to the immediately next block and are overdue (scheduledDate in the past,
+   * status still SCHEDULED, not a catch-up). Reschedule them starting from today + 7 days
+   * so they become actionable again instead of sitting as silent overdue records.
+   */
+  private async openNextRoundAfterMiss(
+    childId: string,
+    missedVaccineCode: string,
+    missedDoseNumber: number,
+    userHospitalId?: string,
+    userId?: string,
+  ): Promise<void> {
+    const missedBlock = this.getVaccineBlock(missedVaccineCode, missedDoseNumber);
+    const nextBlock = missedBlock + 1;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Find all SCHEDULED, non-catch-up records for this child in the next block that are overdue
+    const allChildRecords = await this.vaccinationRecordModel
+      .find({
+        childId: new Types.ObjectId(childId),
+        status: 'SCHEDULED',
+        isCatchUp: { $ne: true },
+        scheduledDate: { $lt: today },
+      })
+      .populate('vaccineId')
+      .exec();
+
+    const nextBlockOverdue = allChildRecords.filter((r) => {
+      const vCode = (r.vaccineId as any)?.code;
+      const block = this.getVaccineBlock(vCode, r.doseNumber);
+      return block === nextBlock;
+    });
+
+    if (nextBlockOverdue.length === 0) return;
+
+    // Reschedule each overdue next-block record to today + 7 days,
+    // preserving the original scheduled date for audit purposes.
+    const rescheduleDate = new Date();
+    rescheduleDate.setDate(rescheduleDate.getDate() + 7);
+
+    for (const r of nextBlockOverdue) {
+      await this.vaccinationRecordModel.findByIdAndUpdate((r as any)._id, {
+        scheduledDate: rescheduleDate,
+        originalScheduleDate: r.originalScheduleDate ?? r.scheduledDate,
+        // Reset reminder flags so the cron picks up the new date
+        reminderSent: false,
+        reminder3DaySent: false,
+        reminderSameDaySent: false,
+      });
+    }
   }
 
   async deferVaccination(id: string, deferReason: string, newScheduledDate: string, userRole: string, userHospitalId?: string): Promise<VaccinationRecord> {
@@ -429,24 +543,25 @@ export class VaccinationsService {
       const dNum = record.doseNumber;
       const blockNum = this.getVaccineBlock(vCode, dNum);
 
-      if (blockNum < targetBlock) {
-        if (record.status !== 'ADMINISTERED' && record.status !== 'CONTRAINDICATED') {
-          incompletePredecessors.push({
-            name: (record.vaccineId as any)?.name || vCode,
-            dose: dNum,
-            block: blockNum,
-            status: record.status,
-          });
-        }
+      // Only active SCHEDULED doses block the next round.
+      // MISSED / DEFERRED are recorded on the child's vaccination card and allow catch-up progression.
+      if (blockNum < targetBlock && record.status === 'SCHEDULED') {
+        incompletePredecessors.push({
+          name: (record.vaccineId as any)?.name || vCode,
+          dose: dNum,
+          block: blockNum,
+          status: record.status,
+        });
       }
     }
 
     if (incompletePredecessors.length > 0) {
       const listStr = incompletePredecessors
-        .map(p => `${p.name} (Dose ${p.dose}) [Block ${p.block}] - Status: ${p.status}`)
+        .map(p => `${p.name} (Dose ${p.dose}) [Block ${p.block}]`)
         .join(', ');
       throw new BadRequestException(
-        `Cannot administer Block ${targetBlock} vaccine because previous milestone blocks are incomplete. Pending vaccines: ${listStr}`
+        `Complete or mark as missed the previous scheduled vaccines before this dose: ${listStr}. ` +
+          `Use "Miss" to record a missed dose on the vaccination card and continue with the next round.`,
       );
     }
   }

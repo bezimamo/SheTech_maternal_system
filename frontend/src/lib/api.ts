@@ -59,9 +59,15 @@ export async function handleResponse(response: Response) {
       throw new UnauthorizedError();
     }
 
-    const message = data?.message || data?.error || response.statusText || 'Request failed';
+    let message = data?.message || data?.error || response.statusText || 'Request failed';
+    if (response.status === 502) {
+      message =
+        typeof message === 'string' && message.includes('Backend')
+          ? message
+          : 'Backend service is unavailable. Ensure the API is running (cd backend && npm run start:dev).';
+    }
     console.error(`[API] Error ${response.status}:`, message);
-    throw new Error(message);
+    throw new Error(typeof message === 'string' ? message : 'Request failed');
   }
 
   return data;

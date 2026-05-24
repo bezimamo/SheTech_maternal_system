@@ -96,6 +96,21 @@ export class ReferralsController {
     return this.referralsService.getCheckedInReferrals(facilityId);
   }
 
+  // ── GENERATE QR (upload to Cloudinary + accept) ────────────────────────────
+  @Post(':id/qr-code')
+  @Roles(
+    UserRole.LIAISON_OFFICER, UserRole.DOCTOR, UserRole.NURSE, UserRole.MIDWIFE,
+    UserRole.HOSPITAL_ADMIN, UserRole.HEALTH_CENTER_ADMIN,
+  )
+  async generateQrCode(@Param('id') id: string, @Req() req: any) {
+    const actorId = req.user._id ?? req.user.userId;
+    const facilityId = getFacilityId(req.user);
+    if (!actorId || !facilityId) {
+      throw new BadRequestException('User ID or facility ID missing from token');
+    }
+    return this.referralsService.generateAndStoreQrCode(id, actorId, facilityId);
+  }
+
   // ── RESPOND (Accept / Reject) ──────────────────────────────────────────────
   @Patch(':id/respond')
   @Roles(
