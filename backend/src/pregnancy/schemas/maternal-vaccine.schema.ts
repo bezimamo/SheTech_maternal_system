@@ -38,6 +38,9 @@ export class MaternalVaccine {
   @Prop({ type: Types.ObjectId, ref: 'Hospital' })
   givenAt: Types.ObjectId;
 
+  @Prop()
+  clinicalProtection?: string;
+
   // ── REMINDERS & NOTIFICATIONS ─────────────────────────────────────────────
   @Prop({ default: false })
   reminderSent: boolean;
@@ -62,12 +65,18 @@ export class MaternalVaccine {
 export const MaternalVaccineSchema = SchemaFactory.createForClass(MaternalVaccine);
 
 // ── CONSTANTS & METADATA CONFIGURATION ──────────────────────────────────────
-// WHO-recommended maternal vaccines with intervals
+// WHO-recommended maternal vaccines with intervals and protection durations
 export const MATERNAL_VACCINE_SCHEDULE = {
-  TT1: { name: 'Tetanus Toxoid 1', nextDoseWeeks: 4, doseNumber: 1 },
-  TT2: { name: 'Tetanus Toxoid 2', nextDoseWeeks: 26, doseNumber: 2 }, // 6 months after TT1
-  TT3: { name: 'Tetanus Toxoid 3', nextDoseWeeks: 52, doseNumber: 3 }, // 1 year after TT2
-  TT4: { name: 'Tetanus Toxoid 4', nextDoseWeeks: 52, doseNumber: 4 },
-  TT5: { name: 'Tetanus Toxoid 5', nextDoseWeeks: 52, doseNumber: 5 },
-  INFLUENZA: { name: 'Influenza Vaccine', nextDoseWeeks: null, doseNumber: 1 },
+  Td1: { name: 'Tetanus Diphtheria 1', nextDoseWeeks: 4, doseNumber: 1, protection: 'Baseline entry' },
+  Td2: { name: 'Tetanus Diphtheria 2', nextDoseWeeks: 26, doseNumber: 2, protection: 'Up to 3 years' }, // 6 months after Td1
+  Td3: { name: 'Tetanus Diphtheria 3', nextDoseWeeks: 52, doseNumber: 3, protection: 'Up to 5 years' }, // 1 year after Td2
+  Td4: { name: 'Tetanus Diphtheria 4', nextDoseWeeks: 52, doseNumber: 4, protection: 'Up to 10 years' }, // 1 year after Td3
+  Td5: { name: 'Tetanus Diphtheria 5', nextDoseWeeks: null, doseNumber: 5, protection: 'Lifelong maternal immunity' },
+  // TT aliases for legacy compatibility
+  TT1: { name: 'Tetanus Toxoid 1', nextDoseWeeks: 4, doseNumber: 1, protection: 'Baseline entry' },
+  TT2: { name: 'Tetanus Toxoid 2', nextDoseWeeks: 26, doseNumber: 2, protection: 'Up to 3 years' },
+  TT3: { name: 'Tetanus Toxoid 3', nextDoseWeeks: 52, doseNumber: 3, protection: 'Up to 5 years' },
+  TT4: { name: 'Tetanus Toxoid 4', nextDoseWeeks: 52, doseNumber: 4, protection: 'Up to 10 years' },
+  TT5: { name: 'Tetanus Toxoid 5', nextDoseWeeks: null, doseNumber: 5, protection: 'Lifelong maternal immunity' },
+  INFLUENZA: { name: 'Influenza Vaccine', nextDoseWeeks: null, doseNumber: 1, protection: 'Seasonal protection' },
 };

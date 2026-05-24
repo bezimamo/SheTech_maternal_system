@@ -53,6 +53,12 @@ export class VaccinationRecord {
   @Prop()
   notes?: string;
 
+  @Prop({ type: Number })
+  weightKg?: number;
+
+  @Prop({ type: Number })
+  ageDays?: number;
+
   @Prop({ type: Types.ObjectId, ref: 'User' })
   createdBy: Types.ObjectId;
 

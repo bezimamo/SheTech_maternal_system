@@ -253,13 +253,34 @@ export default function RegisterMother() {
     );
   }
 
+  // Helper to calculate Expected Delivery Date (EDD) based on Last Menstrual Period (LMP)
+  // Standard pregnancy length is 280 days (40 weeks) from the start of LMP.
+  const calculateEDD = (lmpDateStr: string): string => {
+    if (!lmpDateStr) return '';
+    const lmpDate = new Date(lmpDateStr);
+    if (isNaN(lmpDate.getTime())) return '';
+    const eddDate = new Date(lmpDate.getTime());
+    eddDate.setDate(eddDate.getDate() + 280);
+    return eddDate.toISOString().split('T')[0];
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type, checked } = e.target as HTMLInputElement;
     console.log(`Input changed - ${name}:`, value);
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+    
+    if (name === 'lmp') {
+      const calculatedEdd = calculateEDD(value);
+      setFormData(prev => ({
+        ...prev,
+        lmp: value,
+        expectedDeliveryDate: calculatedEdd
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value
+      }));
+    }
 
     // Real-time Ethiopian phone validation
     if (name === 'phone') {

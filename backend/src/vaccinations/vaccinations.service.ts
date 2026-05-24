@@ -51,7 +51,11 @@ export class VaccinationsService {
     await this.childrenService.findById(createVaccinationRecordDto.childId, userRole, userHospitalId);
     
     // Validate vaccine exists
-    await this.findVaccineById(createVaccinationRecordDto.vaccineId);
+    const vaccine = await this.findVaccineById(createVaccinationRecordDto.vaccineId);
+
+    if (createVaccinationRecordDto.status === 'ADMINISTERED') {
+      await this.checkBlockDependency(createVaccinationRecordDto.childId, vaccine.code, createVaccinationRecordDto.doseNumber || 1);
+    }
 
     const recordData = {
       ...createVaccinationRecordDto,
@@ -64,6 +68,8 @@ export class VaccinationsService {
       expiryDate: createVaccinationRecordDto.expiryDate ? new Date(createVaccinationRecordDto.expiryDate) : undefined,
       followUpDate: createVaccinationRecordDto.followUpDate ? new Date(createVaccinationRecordDto.followUpDate) : undefined,
       originalScheduleDate: createVaccinationRecordDto.originalScheduleDate ? new Date(createVaccinationRecordDto.originalScheduleDate) : undefined,
+      weightKg: createVaccinationRecordDto.weightKg ? Number(createVaccinationRecordDto.weightKg) : undefined,
+      ageDays: createVaccinationRecordDto.ageDays ? Number(createVaccinationRecordDto.ageDays) : undefined,
       // Ensure all reminder flags start as false so the cron picks this record up
       reminderSent: false,
       reminder3DaySent: false,
@@ -222,6 +228,19 @@ export class VaccinationsService {
     if (updateVaccinationRecordDto.followUpDate) {
       updateData.followUpDate = new Date(updateVaccinationRecordDto.followUpDate);
     }
+    if (updateVaccinationRecordDto.weightKg !== undefined) {
+      updateData.weightKg = Number(updateVaccinationRecordDto.weightKg);
+    }
+    if (updateVaccinationRecordDto.ageDays !== undefined) {
+      updateData.ageDays = Number(updateVaccinationRecordDto.ageDays);
+    }
+
+    if (updateData.status === 'ADMINISTERED') {
+      const vaccine = await this.vaccineModel.findById(record.vaccineId).exec();
+      if (vaccine) {
+        await this.checkBlockDependency(record.childId.toString(), vaccine.code, record.doseNumber);
+      }
+    }
 
     return this.vaccinationRecordModel.findByIdAndUpdate(id, updateData, { new: true })
       .populate('vaccineId', 'name code description category recommendedAge')
@@ -330,12 +349,24 @@ export class VaccinationsService {
   }
 
   async markVaccinationAdministered(id: string, administrationData: any, userRole: string, userHospitalId?: string, userId?: string): Promise<VaccinationRecord> {
+    const record = await this.vaccinationRecordModel.findById(id).populate('vaccineId').exec();
+    if (!record) {
+      throw new NotFoundException('Vaccination record not found');
+    }
+
+    // Check block dependency before administering
+    const vaccineCode = (record.vaccineId as any)?.code;
+    const doseNumber = record.doseNumber;
+    await this.checkBlockDependency(record.childId.toString(), vaccineCode, doseNumber);
+
     const updateData = {
       ...administrationData,
       status: 'ADMINISTERED',
-      administeredDate: new Date(),
-      administeredBy: new Types.ObjectId(userId),
-      administeredAt: new Types.ObjectId(userHospitalId),
+      administeredDate: administrationData.administeredDate ? new Date(administrationData.administeredDate) : new Date(),
+      administeredBy: userId ? new Types.ObjectId(userId) : undefined,
+      administeredAt: userHospitalId ? new Types.ObjectId(userHospitalId) : undefined,
+      weightKg: administrationData.weightKg ? Number(administrationData.weightKg) : undefined,
+      ageDays: administrationData.ageDays ? Number(administrationData.ageDays) : undefined,
     };
 
     return this.updateVaccinationRecord(id, updateData, userRole, userHospitalId);
@@ -355,5 +386,68 @@ export class VaccinationsService {
       scheduledDate: new Date(newScheduledDate),
       originalScheduleDate: new Date() // Store the original date
     }, userRole, userHospitalId);
+  }
+
+  getVaccineBlock(code: string, doseNumber: number): number {
+    const normalizedCode = (code || '').toUpperCase().trim();
+    if (normalizedCode === 'BCG' || normalizedCode === 'OPV0' || normalizedCode === 'HEPB') {
+      return 1;
+    }
+    if (normalizedCode === 'OPV' || normalizedCode === 'PENTA' || normalizedCode === 'PCV' || normalizedCode === 'ROTA') {
+      if (doseNumber === 1) return 2;
+      if (doseNumber === 2) return 3;
+      if (doseNumber === 3) return 4;
+    }
+    if (normalizedCode === 'IPV') {
+      return 4;
+    }
+    if (normalizedCode === 'VIT_A' || normalizedCode === 'VITA' || normalizedCode === 'MALARIA1') {
+      return 5;
+    }
+    if (normalizedCode === 'MALARIA2') {
+      return 6;
+    }
+    return 1; // Default fallback
+  }
+
+  async checkBlockDependency(childId: string, vaccineCode: string, doseNumber: number): Promise<void> {
+    const targetBlock = this.getVaccineBlock(vaccineCode, doseNumber);
+    if (targetBlock <= 1) {
+      return; // Block 1 has no predecessor blocks
+    }
+
+    // Get all vaccination records for this child
+    const allRecords = await this.vaccinationRecordModel
+      .find({ childId: new Types.ObjectId(childId) })
+      .populate('vaccineId')
+      .exec();
+
+    const incompletePredecessors = [];
+
+    for (const record of allRecords) {
+      const vCode = (record.vaccineId as any)?.code;
+      const dNum = record.doseNumber;
+      const blockNum = this.getVaccineBlock(vCode, dNum);
+
+      if (blockNum < targetBlock) {
+        if (record.status !== 'ADMINISTERED' && record.status !== 'CONTRAINDICATED') {
+          incompletePredecessors.push({
+            name: (record.vaccineId as any)?.name || vCode,
+            dose: dNum,
+            block: blockNum,
+            status: record.status,
+          });
+        }
+      }
+    }
+
+    if (incompletePredecessors.length > 0) {
+      const listStr = incompletePredecessors
+        .map(p => `${p.name} (Dose ${p.dose}) [Block ${p.block}] - Status: ${p.status}`)
+        .join(', ');
+      throw new BadRequestException(
+        `Cannot administer Block ${targetBlock} vaccine because previous milestone blocks are incomplete. Pending vaccines: ${listStr}`
+      );
+    }
   }
 }

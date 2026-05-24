@@ -93,6 +93,19 @@ export class Child {
 
   @Prop()
   sentToWoredaBy?: string; // name of the health worker who sent it
+
+  // ── Newborn PNC and Protection fields ──────────────────────────────────────
+  @Prop({ default: false })
+  pncVisitDay1: boolean;
+
+  @Prop({ default: false })
+  pncVisitDay3: boolean;
+
+  @Prop({ default: false })
+  pncVisitDay7: boolean;
+
+  @Prop({ default: false })
+  protectedAtBirth: boolean;
 }
 
 export const ChildSchema = SchemaFactory.createForClass(Child);

@@ -215,6 +215,36 @@ export class VaccinationsController {
   }
 
   // Statistics
+  @Roles('SUPER_ADMIN', 'SYSTEM_ADMIN', 'WOREDA_ADMIN', 'HOSPITAL_ADMIN', 'HEALTH_CENTER_ADMIN', 'DOCTOR', 'NURSE', 'MIDWIFE', 'MOTHER')
+  @Get('counseling-guidance')
+  @ApiOperation({ summary: 'Get pediatric health education and counseling prompts' })
+  @ApiResponse({ status: 200, description: 'Prompts retrieved successfully' })
+  async getCounselingGuidance() {
+    return {
+      exclusiveBreastfeeding: {
+        title: "Exclusive Breastfeeding Guidance",
+        text: "Exclusive breastfeeding is medically sufficient for an infant up to 6 months of age. Breast milk provides vital, bioavailable nutrients required for optimal initial growth and immune system development."
+      },
+      nutritionalTransition: {
+        title: "Nutritional Transition Guidance",
+        text: "Upon reaching 6 months of age, the infant should be introduced to appropriate solid, semi-solid, or soft complementary foods alongside continued breastfeeding. Additional nutrition can be prepared from varied groups including cereals, meats, eggs, vegetables, and fruits. Breastfeeding should ideally continue up to 2 years of age and beyond."
+      },
+      heliotherapy: {
+        title: "Heliotherapy (Sunlight) Guidance",
+        text: "Infants require daily exposure to direct, safe sunlight for approximately 20 to 30 minutes. Natural sunlight exposure is critical for synthesizing Vitamin D, promoting bone density, and maintaining overall skin health."
+      },
+      polioPrevention: {
+        title: "Polio Prevention Awareness",
+        text: "Compliance with the oral and inactivated polio vaccine series directly prevents poliomyelitis, protecting children against permanent acute flaccid paralysis and lifelong physical disability."
+      },
+      clinicalCareSeeking: {
+        title: "Clinical Care Seeking Directive",
+        text: "Caregivers are advised that if an infant displays any sign of systemic illness, lethargy, poor feeding, or persistent adverse events following immunization (AEFI), they must seek immediate medical evaluation at the nearest designated health care facility."
+      }
+    };
+  }
+
+  // Statistics
   @Roles('SUPER_ADMIN', 'SYSTEM_ADMIN', 'WOREDA_ADMIN', 'HOSPITAL_ADMIN', 'HEALTH_CENTER_ADMIN', 'DOCTOR', 'NURSE', 'MIDWIFE')
   @Get('stats')
   @ApiOperation({ summary: 'Get vaccination statistics' })

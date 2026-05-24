@@ -303,6 +303,45 @@ export class AncScheduleService {
     batchNumber?: string;
     notes?: string;
   }): Promise<MaternalVaccine> {
+    const isTdOrTT = data.vaccineName.startsWith('Td') || data.vaccineName.startsWith('TT');
+    
+    if (isTdOrTT && data.doseNumber > 1) {
+      // Find the previous dose for this mother
+      const seriesPrefix = data.vaccineName.slice(0, 2); // 'Td' or 'TT'
+      const prevDoseName = `${seriesPrefix}${data.doseNumber - 1}`;
+      
+      const prevDose = await this.maternalVaccineModel.findOne({
+        motherId: new Types.ObjectId(data.motherId),
+        vaccineName: prevDoseName,
+        status: 'GIVEN',
+      }).exec();
+      
+      if (!prevDose) {
+        throw new BadRequestException(`Previous dose (${prevDoseName}) must be administered before ${data.vaccineName}.`);
+      }
+      
+      // Calculate interval in weeks/days
+      const diffMs = new Date(data.givenDate).getTime() - new Date(prevDose.givenDate).getTime();
+      const diffDays = diffMs / (1000 * 60 * 60 * 24);
+      
+      if (data.doseNumber === 2) {
+        // At least 4 weeks (28 days)
+        if (diffDays < 28) {
+          throw new BadRequestException(`${data.vaccineName} must be administered at least 4 weeks after ${prevDoseName}. Current interval: ${Math.floor(diffDays)} days.`);
+        }
+      } else if (data.doseNumber === 3) {
+        // At least 6 months (180 days)
+        if (diffDays < 180) {
+          throw new BadRequestException(`${data.vaccineName} must be administered at least 6 months after ${prevDoseName}. Current interval: ${Math.floor(diffDays)} days.`);
+        }
+      } else if (data.doseNumber >= 4) {
+        // At least 1 year (365 days)
+        if (diffDays < 365) {
+          throw new BadRequestException(`${data.vaccineName} must be administered at least 1 year after ${prevDoseName}. Current interval: ${Math.floor(diffDays)} days.`);
+        }
+      }
+    }
+
     const schedule = MATERNAL_VACCINE_SCHEDULE[data.vaccineName];
     let nextDoseDate: Date | undefined;
 
@@ -322,6 +361,7 @@ export class AncScheduleService {
       givenAt: new Types.ObjectId(data.givenAt),
       batchNumber: data.batchNumber,
       notes: data.notes,
+      clinicalProtection: schedule?.protection || 'Unknown protection duration',
     }).save();
 
     return record;

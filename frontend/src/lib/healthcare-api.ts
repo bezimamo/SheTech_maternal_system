@@ -134,6 +134,14 @@ export const pregnancyApi = {
     fetch(`${API_BASE}/pregnancy/upcoming-visits`, {
       headers: getAuthHeaders(),
     }).then(handleResponse),
+
+  // Record maternal vaccine
+  recordMaternalVaccine: (vaccineData: any) =>
+    fetch(`${API_BASE}/pregnancy/maternal-vaccines`, getFetchOptions('POST', vaccineData)).then(handleResponse),
+
+  // Get maternal vaccine history
+  getMaternalVaccineHistory: (motherId: string) =>
+    fetch(`${API_BASE}/pregnancy/maternal-vaccines/${motherId}`, getFetchOptions()).then(handleResponse),
 };
 
 // Child Monitoring APIs
@@ -252,6 +260,10 @@ export const vaccinationsApi = {
   // Statistics
   getVaccinationStats: () =>
     fetch(`${API_BASE}/vaccinations/stats`, getFetchOptions()).then(handleResponse),
+
+  // Counseling Guidance
+  getCounselingGuidance: () =>
+    fetch(`${API_BASE}/vaccinations/counseling-guidance`, getFetchOptions()).then(handleResponse),
 };
 
 // Hospitals API

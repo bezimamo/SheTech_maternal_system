@@ -136,8 +136,11 @@ export default function MOHDashboard() {
       setReferralStats(referralStatsResponse || { total: 0, pending: 0, accepted: 0, checkedIn: 0, completed: 0, rejected: 0, expired: 0, active: 0 });
       setStats(newStats);
       setRecentActivity(activities.slice(0, 5)); // Show top 5 activities
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch dashboard data:', error);
+      if (error?.name === 'UnauthorizedError' || error?.message === 'Unauthorized') {
+        logout();
+      }
     } finally {
       setLoading(false);
     }

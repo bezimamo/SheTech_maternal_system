@@ -39,7 +39,100 @@ interface AdministerForm {
   manufacturer: string;
   injectionSite: string;
   notes: string;
+  weightKg?: string;
+  ageDays?: string;
 }
+
+const VACCINE_BLOCKS = [
+  {
+    number: 1,
+    name: 'Block 1: Birth / Neonatal Doses',
+    description: 'Crucial baseline doses administered at birth to establish early immunity.',
+    vaccines: ['BCG', 'OPV0', 'HEPB']
+  },
+  {
+    number: 2,
+    name: 'Block 2: First Multidose Series (6 Weeks)',
+    description: 'First series of routine multidose vaccinations to protect against polio, rotavirus, pneumonia, etc.',
+    vaccines: ['OPV', 'PENTA', 'PCV', 'ROTA'],
+    doseNumber: 1
+  },
+  {
+    number: 3,
+    name: 'Block 3: Second Multidose Series (10 Weeks)',
+    description: 'Second series of routine vaccinations to strengthen antibody levels.',
+    vaccines: ['OPV', 'PENTA', 'PCV', 'ROTA'],
+    doseNumber: 2
+  },
+  {
+    number: 4,
+    name: 'Block 4: Third Multidose Series (14 Weeks)',
+    description: 'Third series of routine vaccinations, introducing IPV for comprehensive polio protection.',
+    vaccines: ['OPV', 'PENTA', 'PCV', 'ROTA', 'IPV'],
+    doseNumber: 3
+  },
+  {
+    number: 5,
+    name: 'Block 5: Micronutrient & Endemic Interventions',
+    description: 'Endemic disease vaccinations and key micronutrient supplementations.',
+    vaccines: ['VITA', 'MALARIA1']
+  },
+  {
+    number: 6,
+    name: 'Block 6: Subsequent Interventions',
+    description: 'Follow-up endemic vaccine doses and subsequent subsequent pediatric interventions.',
+    vaccines: ['MALARIA2']
+  }
+];
+
+const getRecordBlockNumber = (code: string, doseNumber: number): number => {
+  const c = (code || '').toUpperCase().trim();
+  if (c === 'BCG' || c === 'OPV0' || c === 'HEPB') {
+    return 1;
+  }
+  if (c === 'OPV' || c === 'PENTA' || c === 'PCV' || c === 'ROTA') {
+    if (doseNumber === 1) return 2;
+    if (doseNumber === 2) return 3;
+    if (doseNumber === 3) return 4;
+  }
+  if (c === 'IPV') {
+    return 4;
+  }
+  if (c === 'VITA' || c === 'VIT_A' || c === 'MALARIA1') {
+    return 5;
+  }
+  if (c === 'MALARIA2') {
+    return 6;
+  }
+  return 1; // Default fallback
+};
+
+const getBlockStatus = (blockNum: number, records: VaccinationRecord[]) => {
+  if (blockNum === 1) {
+    const blockRecords = records.filter(r => getRecordBlockNumber(r.vaccineId?.code, r.doseNumber) === 1);
+    if (blockRecords.length === 0) return 'READY';
+    const completed = blockRecords.filter(r => r.status === 'ADMINISTERED' || r.status === 'CONTRAINDICATED').length;
+    return completed === blockRecords.length ? 'COMPLETED' : 'IN_PROGRESS';
+  }
+
+  // Check if previous blocks are completed
+  for (let b = 1; b < blockNum; b++) {
+    const prevBlockRecords = records.filter(r => getRecordBlockNumber(r.vaccineId?.code, r.doseNumber) === b);
+    if (prevBlockRecords.length === 0) continue;
+    const prevCompleted = prevBlockRecords.filter(r => r.status === 'ADMINISTERED' || r.status === 'CONTRAINDICATED').length;
+    if (prevCompleted < prevBlockRecords.length) {
+      return 'LOCKED';
+    }
+  }
+
+  // Check current block
+  const blockRecords = records.filter(r => getRecordBlockNumber(r.vaccineId?.code, r.doseNumber) === blockNum);
+  if (blockRecords.length === 0) return 'READY';
+  const completed = blockRecords.filter(r => r.status === 'ADMINISTERED' || r.status === 'CONTRAINDICATED').length;
+  if (completed === blockRecords.length) return 'COMPLETED';
+  if (completed > 0) return 'IN_PROGRESS';
+  return 'READY';
+};
 
 export default function ChildVaccinations() {
   const params = useParams();
@@ -52,6 +145,8 @@ export default function ChildVaccinations() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const tomorrowStr = new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0];
+
   // Administer modal
   const [showAdministerModal, setShowAdministerModal] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<VaccinationRecord | null>(null);
@@ -62,6 +157,8 @@ export default function ChildVaccinations() {
     manufacturer: '',
     injectionSite: 'Left Thigh',
     notes: '',
+    weightKg: '',
+    ageDays: '',
   });
   const [administerLoading, setAdministerLoading] = useState(false);
   const [administerError, setAdministerError] = useState<string | null>(null);
@@ -79,6 +176,8 @@ export default function ChildVaccinations() {
     injectionSite: 'Left Thigh',
     notes: '',
     status: 'ADMINISTERED' as 'ADMINISTERED' | 'SCHEDULED',
+    weightKg: '',
+    ageDays: '',
   });
   const [addLoading, setAddLoading] = useState(false);
   const [addError, setAddError] = useState<string | null>(null);
@@ -159,13 +258,19 @@ export default function ChildVaccinations() {
 
   const openAdministerModal = (record: VaccinationRecord) => {
     setSelectedRecord(record);
+    const birth = new Date(child?.birthDate || new Date());
+    const today = new Date();
+    const ageInDays = Math.max(0, Math.floor((today.getTime() - birth.getTime()) / (1000 * 60 * 60 * 24)));
+
     setAdministerForm({
       administeredDate: new Date().toISOString().split('T')[0],
       nextScheduledDate: '',
       batchNumber: '',
       manufacturer: '',
-      injectionSite: 'Left Thigh',
+      injectionSite: record.vaccineId?.code === 'OPV' || record.vaccineId?.code === 'ROTA' || record.vaccineId?.code === 'OPV0' ? 'Oral' : 'Left Thigh',
       notes: '',
+      weightKg: '',
+      ageDays: ageInDays.toString(),
     });
     setAdministerError(null);
     setShowAdministerModal(true);
@@ -174,6 +279,17 @@ export default function ChildVaccinations() {
   const handleAdminister = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedRecord) return;
+    
+    if (administerForm.nextScheduledDate) {
+      const nextDate = new Date(administerForm.nextScheduledDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (nextDate <= today) {
+        setAdministerError('Next scheduled date must be in the future.');
+        return;
+      }
+    }
+    
     setAdministerLoading(true);
     setAdministerError(null);
     try {
@@ -183,6 +299,8 @@ export default function ChildVaccinations() {
         manufacturer: administerForm.manufacturer || undefined,
         injectionSite: administerForm.injectionSite || undefined,
         notes: administerForm.notes || undefined,
+        weightKg: administerForm.weightKg ? parseFloat(administerForm.weightKg) : undefined,
+        ageDays: administerForm.ageDays ? parseInt(administerForm.ageDays) : undefined,
       });
 
       // If health worker set a next dose date, create a new scheduled record
@@ -208,6 +326,26 @@ export default function ChildVaccinations() {
   const handleAddVaccination = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addForm.vaccineId) { setAddError('Please select a vaccine.'); return; }
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (addForm.status === 'SCHEDULED' && addForm.scheduledDate) {
+      const scheduledDate = new Date(addForm.scheduledDate);
+      if (scheduledDate <= today) {
+        setAddError('Scheduled date must be in the future.');
+        return;
+      }
+    }
+    
+    if (addForm.nextScheduledDate) {
+      const nextDate = new Date(addForm.nextScheduledDate);
+      if (nextDate <= today) {
+        setAddError('Next scheduled date must be in the future.');
+        return;
+      }
+    }
+    
     setAddLoading(true);
     setAddError(null);
     try {
@@ -222,6 +360,8 @@ export default function ChildVaccinations() {
         manufacturer: addForm.manufacturer || undefined,
         injectionSite: addForm.injectionSite || undefined,
         notes: addForm.notes || undefined,
+        weightKg: addForm.weightKg ? parseFloat(addForm.weightKg) : undefined,
+        ageDays: addForm.ageDays ? parseInt(addForm.ageDays) : undefined,
       });
 
       // If next dose date provided, create a scheduled follow-up
@@ -361,78 +501,141 @@ export default function ChildVaccinations() {
           </div>
         </div>
 
-        {/* Records table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Vaccination Records</h2>
-          </div>
-          {vaccinationRecords.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-400 text-lg mb-2">No vaccination records yet</p>
-              <button onClick={() => setShowAddModal(true)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm">
-                Add First Vaccination
-              </button>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {['Vaccine', 'Dose', 'Scheduled', 'Administered', 'Next Dose', 'Status', 'Actions'].map(h => (
-                      <th key={h} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {vaccinationRecords.map(record => (
-                    <tr key={record._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <p className="text-sm font-medium text-gray-900">{record.vaccineId?.name ?? '—'}</p>
-                        <p className="text-xs text-gray-500">{record.vaccineId?.code ?? ''}</p>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        Dose {record.doseNumber}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {record.scheduledDate ? new Date(record.scheduledDate).toLocaleDateString() : '—'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {record.administeredDate ? new Date(record.administeredDate).toLocaleDateString() : '—'}
-                        {record.batchNumber && <p className="text-xs text-gray-400">Batch: {record.batchNumber}</p>}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {record.followUpDate ? (
-                          <span className="text-blue-600">{new Date(record.followUpDate).toLocaleDateString()}</span>
-                        ) : '—'}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${statusColor(record.status)}`}>
-                          {record.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <div className="flex gap-2">
-                          {record.status === 'SCHEDULED' && (
-                            <>
-                              <button onClick={() => openAdministerModal(record)}
-                                className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700">
-                                Administer
-                              </button>
-                              <button onClick={() => handleMarkMissed(record._id)}
-                                className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600">
-                                Missed
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+        {/* Milestone Blocks Visual Grouping */}
+        <div className="space-y-8">
+          <h2 className="text-2xl font-bold text-gray-900">Infant Immunization Milestone Blocks</h2>
+          {VACCINE_BLOCKS.map(block => {
+            const blockRecords = vaccinationRecords.filter(r => getRecordBlockNumber(r.vaccineId?.code, r.doseNumber) === block.number);
+            const blockStatus = getBlockStatus(block.number, vaccinationRecords);
+            
+            // Calculate progress percentage
+            const completedCount = blockRecords.filter(r => r.status === 'ADMINISTERED' || r.status === 'CONTRAINDICATED').length;
+            const totalCount = blockRecords.length;
+            const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+            
+            let blockStatusColor = 'bg-gray-100 text-gray-700 border-gray-200';
+            let statusText = 'Locked';
+            let bgStyle = 'bg-gray-50/50 border-gray-200 opacity-60';
+            
+            if (blockStatus === 'COMPLETED') {
+              blockStatusColor = 'bg-green-100 text-green-800 border-green-200';
+              statusText = 'Completed';
+              bgStyle = 'bg-white border-green-200 shadow-sm';
+            } else if (blockStatus === 'IN_PROGRESS') {
+              blockStatusColor = 'bg-blue-100 text-blue-800 border-blue-200';
+              statusText = 'In Progress';
+              bgStyle = 'bg-white border-blue-200 shadow-sm ring-1 ring-blue-50';
+            } else if (blockStatus === 'READY') {
+              blockStatusColor = 'bg-yellow-100 text-yellow-800 border-yellow-200';
+              statusText = 'Ready to Begin';
+              bgStyle = 'bg-white border-yellow-200 shadow-sm ring-1 ring-yellow-50';
+            } else {
+              bgStyle = 'bg-gray-50 border-dashed border-gray-200 grayscale-[50%]';
+            }
+
+            return (
+              <div key={block.number} className={`border rounded-2xl p-6 transition-all duration-300 ${bgStyle}`}>
+                <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-3">
+                      <h3 className="text-xl font-bold text-gray-900">{block.name}</h3>
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${blockStatusColor}`}>
+                        {statusText}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-600 mt-1">{block.description}</p>
+                  </div>
+                  
+                  {blockRecords.length > 0 && (
+                    <div className="text-right flex flex-col items-end">
+                      <div className="text-xs text-gray-500 font-medium mb-1">
+                        Doses Administered: {completedCount} / {totalCount}
+                      </div>
+                      <div className="w-32 bg-gray-200 h-2 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 ${
+                            blockStatus === 'COMPLETED' ? 'bg-green-500' : 'bg-blue-500'
+                          }`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {blockStatus === 'LOCKED' ? (
+                  <div className="bg-red-50/50 border border-red-200/50 rounded-xl p-4 flex items-center space-x-3 text-red-800 text-sm">
+                    <span className="text-lg">🛑</span>
+                    <span><strong>Clinical Constraint:</strong> You must complete all primary foundational doses in previous milestone blocks before administering vaccinations in this block.</span>
+                  </div>
+                ) : blockRecords.length === 0 ? (
+                  <p className="text-sm text-gray-500 italic">No vaccines configured for this block.</p>
+                ) : (
+                  <div className="overflow-x-auto mt-4 border border-gray-100 rounded-xl">
+                    <table className="min-w-full divide-y divide-gray-100">
+                      <thead className="bg-gray-50/50">
+                        <tr>
+                          {['Vaccine', 'Dose', 'Scheduled Date', 'Administered Date', 'Encounter Metrics', 'Status', 'Actions'].map(h => (
+                            <th key={h} className="px-5 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-100">
+                        {blockRecords.map(record => (
+                          <tr key={record._id} className="hover:bg-gray-50/60 transition-colors">
+                            <td className="px-5 py-4 whitespace-nowrap">
+                              <p className="text-sm font-bold text-gray-900">{record.vaccineId?.name ?? '—'}</p>
+                              <p className="text-xs text-blue-600 font-mono mt-0.5">{record.vaccineId?.code ?? ''}</p>
+                            </td>
+                            <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-700">
+                              Dose {record.doseNumber}
+                            </td>
+                            <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
+                              {record.scheduledDate ? new Date(record.scheduledDate).toLocaleDateString() : '—'}
+                            </td>
+                            <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-700">
+                              {record.administeredDate ? new Date(record.administeredDate).toLocaleDateString() : '—'}
+                              {record.batchNumber && <p className="text-xs text-gray-400 mt-0.5">Batch: {record.batchNumber}</p>}
+                            </td>
+                            <td className="px-5 py-4 whitespace-nowrap text-sm text-gray-600">
+                              {record.status === 'ADMINISTERED' ? (
+                                <div className="space-y-0.5 text-xs">
+                                  {record.weightKg ? <p>Weight: <span className="font-semibold text-gray-900">{record.weightKg} kg</span></p> : null}
+                                  {record.ageDays ? <p>Age: <span className="font-semibold text-gray-900">{record.ageDays} days</span></p> : null}
+                                  {!record.weightKg && !record.ageDays && <span className="text-gray-400">—</span>}
+                                </div>
+                              ) : '—'}
+                            </td>
+                            <td className="px-5 py-4 whitespace-nowrap">
+                              <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border ${statusColor(record.status)}`}>
+                                {record.status}
+                              </span>
+                            </td>
+                            <td className="px-5 py-4 whitespace-nowrap text-sm font-semibold">
+                              <div className="flex gap-2">
+                                {record.status === 'SCHEDULED' && (
+                                  <>
+                                    <button onClick={() => openAdministerModal(record)}
+                                      className="px-3 py-1 bg-green-600 text-white text-xs rounded-lg hover:bg-green-700 transition-colors shadow-sm">
+                                      Administer
+                                    </button>
+                                    <button onClick={() => handleMarkMissed(record._id)}
+                                      className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600 transition-colors shadow-sm">
+                                      Missed
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </main>
 
@@ -458,7 +661,7 @@ export default function ChildVaccinations() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Next Dose Date <span className="text-gray-400 font-normal">(optional — leave blank if no next dose)</span>
                 </label>
-                <input type="date" value={administerForm.nextScheduledDate}
+                <input type="date" value={administerForm.nextScheduledDate} min={tomorrowStr}
                   onChange={e => setAdministerForm(p => ({ ...p, nextScheduledDate: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
                 <p className="text-xs text-gray-400 mt-1">If set, a new scheduled record will be created for the next dose.</p>
@@ -482,6 +685,22 @@ export default function ChildVaccinations() {
                     <option>Right Arm</option>
                     <option>Oral</option>
                   </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Weight at Encounter (kg)</label>
+                  <input type="number" step="0.01" min="0.1" max="30" value={administerForm.weightKg}
+                    onChange={e => setAdministerForm(p => ({ ...p, weightKg: e.target.value }))}
+                    placeholder="e.g. 4.5"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Age at Encounter (days)</label>
+                  <input type="number" min="0" max="2000" value={administerForm.ageDays}
+                    onChange={e => setAdministerForm(p => ({ ...p, ageDays: e.target.value }))}
+                    placeholder="e.g. 45"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
                 </div>
               </div>
               <div>
@@ -521,9 +740,29 @@ export default function ChildVaccinations() {
                     onChange={e => handleVaccineChange(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500">
                     <option value="">Select vaccine…</option>
-                    {allVaccines.map((v: any) => (
-                      <option key={v._id} value={v._id}>{v.name} ({v.code})</option>
-                    ))}
+                    {VACCINE_BLOCKS.map(block => {
+                      const blockVaccines = allVaccines.filter(v => block.vaccines.includes((v.code || '').toUpperCase()));
+                      if (blockVaccines.length === 0) return null;
+                      return (
+                        <optgroup key={block.number} label={block.name}>
+                          {blockVaccines.map(v => (
+                            <option key={`${block.number}-${v._id}`} value={v._id}>{v.name} ({v.code})</option>
+                          ))}
+                        </optgroup>
+                      );
+                    })}
+                    {(() => {
+                      const allBlockCodes = new Set(VACCINE_BLOCKS.flatMap(b => b.vaccines));
+                      const otherVaccines = allVaccines.filter(v => !allBlockCodes.has((v.code || '').toUpperCase()));
+                      if (otherVaccines.length === 0) return null;
+                      return (
+                        <optgroup label="Other Vaccines">
+                          {otherVaccines.map(v => (
+                            <option key={`other-${v._id}`} value={v._id}>{v.name} ({v.code})</option>
+                          ))}
+                        </optgroup>
+                      );
+                    })()}
                   </select>
                   {addForm.vaccineId && (() => {
                     const vaccine = allVaccines.find(v => v._id === addForm.vaccineId);
@@ -559,7 +798,7 @@ export default function ChildVaccinations() {
                 ) : (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Scheduled Date *</label>
-                    <input type="date" required value={addForm.scheduledDate}
+                    <input type="date" required value={addForm.scheduledDate} min={tomorrowStr}
                       onChange={e => setAddForm(p => ({ ...p, scheduledDate: e.target.value }))}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
                   </div>
@@ -570,7 +809,7 @@ export default function ChildVaccinations() {
                       {addForm.status === 'ADMINISTERED' ? '(recommended for next dose)' : '(if this is part of a series)'}
                     </span>
                   </label>
-                  <input type="date" value={addForm.nextScheduledDate}
+                  <input type="date" value={addForm.nextScheduledDate} min={tomorrowStr}
                     onChange={e => setAddForm(p => ({ ...p, nextScheduledDate: e.target.value }))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
                   {addForm.status === 'ADMINISTERED' && (
@@ -603,6 +842,24 @@ export default function ChildVaccinations() {
                     <option>Oral</option>
                   </select>
                 </div>
+                {addForm.status === 'ADMINISTERED' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Patient Weight (kg)</label>
+                      <input type="number" step="0.01" min="0.1" max="30" value={addForm.weightKg}
+                        onChange={e => setAddForm(p => ({ ...p, weightKg: e.target.value }))}
+                        placeholder="e.g. 4.5"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Age at Encounter (days)</label>
+                      <input type="number" min="0" max="2000" value={addForm.ageDays}
+                        onChange={e => setAddForm(p => ({ ...p, ageDays: e.target.value }))}
+                        placeholder="e.g. 45"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" />
+                    </div>
+                  </>
+                )}
                 <div className="col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
                   <textarea rows={2} value={addForm.notes}

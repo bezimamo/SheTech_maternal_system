@@ -94,12 +94,33 @@ export default function EditMother() {
     }
   };
 
+  // Helper to calculate Expected Delivery Date (EDD) based on Last Menstrual Period (LMP)
+  // Standard pregnancy length is 280 days (40 weeks) from the start of LMP.
+  const calculateEDD = (lmpDateStr: string): string => {
+    if (!lmpDateStr) return '';
+    const lmpDate = new Date(lmpDateStr);
+    if (isNaN(lmpDate.getTime())) return '';
+    const eddDate = new Date(lmpDate.getTime());
+    eddDate.setDate(eddDate.getDate() + 280);
+    return eddDate.toISOString().split('T')[0];
+  };
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    if (name === 'lmp') {
+      const calculatedEdd = calculateEDD(value);
+      setFormData(prev => ({
+        ...prev,
+        lmp: value,
+        expectedDeliveryDate: calculatedEdd
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

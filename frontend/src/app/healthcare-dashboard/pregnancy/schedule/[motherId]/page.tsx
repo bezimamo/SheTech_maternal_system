@@ -95,6 +95,18 @@ export default function AncSchedulePage() {
   const [showManual, setShowManual] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState<Visit | null>(null);
 
+  // Maternal Vaccine Modal State
+  const [showMaternalVaccine, setShowMaternalVaccine] = useState(false);
+  const [maternalForm, setMaternalForm] = useState({
+    vaccineName: 'Td1',
+    doseNumber: '1',
+    givenDate: new Date().toISOString().split('T')[0],
+    batchNumber: '',
+    notes: '',
+  });
+  const [maternalLoading, setMaternalLoading] = useState(false);
+  const [maternalError, setMaternalError] = useState<string | null>(null);
+
   // Reschedule form
   const [rescheduleDate, setRescheduleDate] = useState('');
   const [rescheduleReason, setRescheduleReason] = useState('');
@@ -117,6 +129,57 @@ export default function AncSchedulePage() {
 
   // Complete action
   const [completing, setCompleting] = useState<string | null>(null);
+
+  const openMaternalVaccineModal = () => {
+    // Find highest Td/TT dose in schedule
+    const tdDoses = (schedule?.vaccines || [])
+      .filter(v => (v.vaccineName.startsWith('Td') || v.vaccineName.startsWith('TT')) && v.status === 'GIVEN')
+      .map(v => v.doseNumber);
+    const highestDose = tdDoses.length > 0 ? Math.max(...tdDoses) : 0;
+    const nextDose = Math.min(5, highestDose + 1);
+    
+    setMaternalForm({
+      vaccineName: `Td${nextDose}`,
+      doseNumber: nextDose.toString(),
+      givenDate: new Date().toISOString().split('T')[0],
+      batchNumber: '',
+      notes: '',
+    });
+    setMaternalError(null);
+    setShowMaternalVaccine(true);
+  };
+
+  const handleVaccineNameChange = (name: string) => {
+    let doseNum = '1';
+    if (name.startsWith('Td')) {
+      doseNum = name.slice(2);
+    } else if (name.startsWith('TT')) {
+      doseNum = name.slice(2);
+    }
+    setMaternalForm(p => ({ ...p, vaccineName: name, doseNumber: doseNum }));
+  };
+
+  const handleRecordMaternalVaccine = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMaternalLoading(true);
+    setMaternalError(null);
+    try {
+      await pregnancyApi.recordMaternalVaccine({
+        motherId,
+        vaccineName: maternalForm.vaccineName,
+        doseNumber: parseInt(maternalForm.doseNumber),
+        givenDate: maternalForm.givenDate,
+        batchNumber: maternalForm.batchNumber || undefined,
+        notes: maternalForm.notes || undefined,
+      });
+      setShowMaternalVaccine(false);
+      await load();
+    } catch (err: any) {
+      setMaternalError(err.message || 'Failed to record vaccine dose');
+    } finally {
+      setMaternalLoading(false);
+    }
+  };
 
   useEffect(() => { load(); }, [motherId]);
 
@@ -395,30 +458,93 @@ export default function AncSchedulePage() {
 
           {/* Vaccines */}
           {activeTab === 'vaccines' && (
-            <div className="p-6">
+            <div className="p-6 space-y-6">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-bold text-gray-900">Maternal Vaccination Records</h3>
+                <button
+                  onClick={openMaternalVaccineModal}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium transition-colors"
+                >
+                  + Record Vaccine Dose
+                </button>
+              </div>
+
+              {/* Td Immunization Progress Tracker */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-6 mb-6">
+                <h3 className="text-sm font-bold text-blue-900 mb-4 flex items-center gap-2">
+                  <span>🛡️</span> Maternal Td (Tetanus Diphtheria) Protection Status
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+                  {[
+                    { key: 'Td1', label: 'Td1', desc: 'ANC contact / early as possible', duration: 'Baseline entry' },
+                    { key: 'Td2', label: 'Td2', desc: 'At least 4 weeks after Td1', duration: 'Up to 3 years protection' },
+                    { key: 'Td3', label: 'Td3', desc: 'At least 6 months after Td2', duration: 'Up to 5 years protection' },
+                    { key: 'Td4', label: 'Td4', desc: 'At least 1 year after Td3', duration: 'Up to 10 years protection' },
+                    { key: 'Td5', label: 'Td5', desc: 'At least 1 year after Td4', duration: 'Lifelong immunity' },
+                  ].map(tdSlot => {
+                    const administered = (vaccines as Vaccine[]).find(v => (v.vaccineName === tdSlot.key || v.vaccineName === tdSlot.key.replace('Td', 'TT')) && v.status === 'GIVEN');
+                    const isNext = !administered && (vaccines as Vaccine[]).filter(v => v.status === 'GIVEN' && (v.vaccineName.startsWith('Td') || v.vaccineName.startsWith('TT'))).length === parseInt(tdSlot.key.slice(2)) - 1;
+                    
+                    return (
+                      <div key={tdSlot.key} className={`border rounded-xl p-4 flex flex-col justify-between transition-all duration-300 ${
+                        administered 
+                          ? 'bg-white border-green-200 shadow-sm text-green-900' 
+                          : isNext
+                          ? 'bg-blue-50 border-blue-200 shadow-sm text-blue-900 ring-2 ring-blue-500/20'
+                          : 'bg-gray-50/50 border-gray-100 text-gray-500'
+                      }`}>
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="font-bold text-sm">{tdSlot.label}</span>
+                            {administered ? (
+                              <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold">Given</span>
+                            ) : isNext ? (
+                              <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold animate-pulse">Next</span>
+                            ) : (
+                              <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">Pending</span>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500 mb-2">{tdSlot.desc}</p>
+                        </div>
+                        <div className={`text-[11px] font-semibold mt-2 pt-2 border-t ${administered ? 'border-green-100 text-green-600' : 'border-gray-100 text-gray-400'}`}>
+                          🛡️ {tdSlot.duration}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
               {vaccines.length === 0 ? (
                 <p className="text-center text-gray-400 py-12">No vaccines recorded yet</p>
               ) : (
                 <div className="space-y-3">
                   {(vaccines as Vaccine[]).map(v => (
-                    <div key={v._id} className="border border-gray-200 rounded-lg p-4 bg-white">
+                    <div key={v._id} className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm hover:shadow transition-shadow">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="font-medium text-gray-900">{v.vaccineName} — Dose {v.doseNumber}</p>
-                          <p className="text-sm text-gray-600">Given: {fmt(v.givenDate)}</p>
+                          <p className="font-bold text-gray-900">{v.vaccineName} — Dose {v.doseNumber}</p>
+                          <p className="text-sm text-gray-600 mt-1">Given: {fmt(v.givenDate)}</p>
                           {v.nextDoseDate && (
-                            <p className="text-sm text-blue-600">Next dose: {fmt(v.nextDoseDate)} ({daysUntil(v.nextDoseDate)})</p>
+                            <p className="text-sm text-blue-600 font-medium mt-1">
+                              📅 Next dose recommended: {fmt(v.nextDoseDate)} ({daysUntil(v.nextDoseDate)})
+                            </p>
+                          )}
+                          {v.clinicalProtection && (
+                            <p className="text-xs text-green-600 font-semibold mt-2 flex items-center gap-1">
+                              🛡️ Protection Duration: {v.clinicalProtection}
+                            </p>
                           )}
                           {v.manualOverride && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Manual Override</span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 mt-2 inline-block">Manual Override</span>
                           )}
                         </div>
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                          v.status === 'GIVEN' ? 'bg-green-100 text-green-800' :
-                          v.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-800' :
-                          'bg-red-100 text-red-800'
+                        <span className={`text-xs px-2.5 py-1 rounded-full font-bold border ${
+                          v.status === 'GIVEN' ? 'bg-green-100 text-green-800 border-green-200' :
+                          v.status === 'SCHEDULED' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                          'bg-red-100 text-red-800 border-red-200'
                         }`}>
-                          {v.status}
+                          {v.status === 'GIVEN' ? 'Administered' : v.status}
                         </span>
                       </div>
                     </div>
@@ -552,6 +678,105 @@ export default function AncSchedulePage() {
                 </button>
                 <button type="button" onClick={() => { setShowManual(false); setManualError(null); }}
                   className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 text-sm">
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Record Maternal Vaccine Modal ── */}
+      {showMaternalVaccine && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Record Maternal Vaccine</h3>
+            {maternalError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+                ❌ {maternalError}
+              </div>
+            )}
+            <form onSubmit={handleRecordMaternalVaccine} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Vaccine Name *</label>
+                <select 
+                  value={maternalForm.vaccineName} 
+                  onChange={e => handleVaccineNameChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Td1">Td1 (Tetanus Diphtheria 1)</option>
+                  <option value="Td2">Td2 (Tetanus Diphtheria 2)</option>
+                  <option value="Td3">Td3 (Tetanus Diphtheria 3)</option>
+                  <option value="Td4">Td4 (Tetanus Diphtheria 4)</option>
+                  <option value="Td5">Td5 (Tetanus Diphtheria 5)</option>
+                  <option value="INFLUENZA">Seasonal Influenza</option>
+                  <option value="TT1">TT1 (Tetanus Toxoid 1 - Legacy)</option>
+                  <option value="TT2">TT2 (Tetanus Toxoid 2 - Legacy)</option>
+                  <option value="TT3">TT3 (Tetanus Toxoid 3 - Legacy)</option>
+                  <option value="TT4">TT4 (Tetanus Toxoid 4 - Legacy)</option>
+                  <option value="TT5">TT5 (Tetanus Toxoid 5 - Legacy)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Dose Number *</label>
+                <input 
+                  type="number" 
+                  min="1" 
+                  max="5" 
+                  required 
+                  value={maternalForm.doseNumber}
+                  onChange={e => setMaternalForm(p => ({ ...p, doseNumber: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date Administered *</label>
+                <input 
+                  type="date" 
+                  required 
+                  value={maternalForm.givenDate}
+                  onChange={e => setMaternalForm(p => ({ ...p, givenDate: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Batch Number</label>
+                <input 
+                  type="text" 
+                  value={maternalForm.batchNumber}
+                  onChange={e => setMaternalForm(p => ({ ...p, batchNumber: e.target.value }))}
+                  placeholder="Optional"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea 
+                  rows={2} 
+                  value={maternalForm.notes}
+                  onChange={e => setMaternalForm(p => ({ ...p, notes: e.target.value }))}
+                  placeholder="Optional notes"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500" 
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button 
+                  type="submit" 
+                  disabled={maternalLoading}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium disabled:opacity-60"
+                >
+                  {maternalLoading ? 'Saving…' : 'Save Vaccine Dose'}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setShowMaternalVaccine(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 text-sm"
+                >
                   Cancel
                 </button>
               </div>

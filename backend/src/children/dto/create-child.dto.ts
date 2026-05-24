@@ -1,4 +1,4 @@
-import { IsString, IsEnum, IsOptional, IsMongoId, IsDateString, IsNumber, Min, Max, IsArray } from 'class-validator';
+import { IsString, IsEnum, IsOptional, IsMongoId, IsDateString, IsNumber, Min, Max, IsArray, IsBoolean } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateChildDto {
@@ -72,4 +72,24 @@ export class CreateChildDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @ApiPropertyOptional({ example: false, description: 'Postnatal Care Day 1 visit status' })
+  @IsOptional()
+  @IsBoolean()
+  pncVisitDay1?: boolean;
+
+  @ApiPropertyOptional({ example: false, description: 'Postnatal Care Day 3 visit status' })
+  @IsOptional()
+  @IsBoolean()
+  pncVisitDay3?: boolean;
+
+  @ApiPropertyOptional({ example: false, description: 'Postnatal Care Day 7 visit status' })
+  @IsOptional()
+  @IsBoolean()
+  pncVisitDay7?: boolean;
+
+  @ApiPropertyOptional({ example: false, description: 'Infant protected at birth status' })
+  @IsOptional()
+  @IsBoolean()
+  protectedAtBirth?: boolean;
 }

@@ -20,6 +20,10 @@ interface ChildFormData {
   complications: string;
   healthStatus: 'HEALTHY' | 'NEEDS_ATTENTION' | 'CRITICAL';
   notes: string;
+  pncVisitDay1: boolean;
+  pncVisitDay3: boolean;
+  pncVisitDay7: boolean;
+  protectedAtBirth: boolean;
 }
 
 export default function RegisterChild() {
@@ -43,6 +47,10 @@ export default function RegisterChild() {
     complications: '',
     healthStatus: 'HEALTHY',
     notes: '',
+    pncVisitDay1: false,
+    pncVisitDay3: false,
+    pncVisitDay7: false,
+    protectedAtBirth: false,
   });
 
   const [mothers, setMothers] = useState<any[]>([]);
@@ -171,10 +179,10 @@ export default function RegisterChild() {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target as HTMLInputElement;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
@@ -226,6 +234,10 @@ export default function RegisterChild() {
         complications: '',
         healthStatus: 'HEALTHY',
         notes: '',
+        pncVisitDay1: false,
+        pncVisitDay3: false,
+        pncVisitDay7: false,
+        protectedAtBirth: false,
       });
     } catch (err: any) {
       setError(err.message || 'Failed to register child');
@@ -592,6 +604,100 @@ export default function RegisterChild() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   />
                 </div>
+              </div>
+            </div>
+
+            {/* Newborn Care & Protection */}
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Newborn Care &amp; Protection (PNC)</h2>
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 space-y-6">
+
+                {/* PNC Visits Timeline */}
+                <div>
+                  <label className="block text-sm font-semibold text-blue-900 mb-1">
+                    Post-Natal Care (PNC) Visits
+                  </label>
+                  <p className="text-xs text-blue-700 mb-4">
+                    Only Day 1 can be recorded at birth registration. Day 3 and Day 7 visits must be updated later
+                    from the child&apos;s profile page once they are conducted.
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                    {/* Day 1 — checkable at registration */}
+                    <label className="flex items-start space-x-3 bg-white p-4 rounded-xl border-2 border-gray-200 shadow-sm cursor-pointer hover:border-blue-300 hover:bg-blue-50/40 transition-all">
+                      <input
+                        type="checkbox"
+                        id="pncVisitDay1"
+                        name="pncVisitDay1"
+                        checked={formData.pncVisitDay1}
+                        onChange={handleInputChange}
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded mt-0.5"
+                      />
+                      <div>
+                        <span className="text-sm font-semibold text-gray-800 block">Day 1 Visit</span>
+                        <span className="text-xs text-gray-500 block">Within first 24 hours of birth</span>
+                        <span className="text-xs text-blue-600 font-medium mt-1 block">✓ Can record now</span>
+                      </div>
+                    </label>
+
+                    {/* Day 3 — locked, upcoming */}
+                    <div className="flex items-start space-x-3 bg-gray-50 p-4 rounded-xl border-2 border-dashed border-gray-200 opacity-70 cursor-not-allowed select-none">
+                      <div className="h-5 w-5 rounded border-2 border-gray-300 bg-white flex-shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-sm font-semibold text-gray-500 block">Day 3 Visit</span>
+                        <span className="text-xs text-gray-400 block">48–72 hours after birth</span>
+                        <span className="text-xs text-amber-600 font-medium mt-1 block">⏳ Update from child profile</span>
+                      </div>
+                    </div>
+
+                    {/* Day 7 — locked, upcoming */}
+                    <div className="flex items-start space-x-3 bg-gray-50 p-4 rounded-xl border-2 border-dashed border-gray-200 opacity-70 cursor-not-allowed select-none">
+                      <div className="h-5 w-5 rounded border-2 border-gray-300 bg-white flex-shrink-0 mt-0.5" />
+                      <div>
+                        <span className="text-sm font-semibold text-gray-500 block">Day 7 Visit</span>
+                        <span className="text-xs text-gray-400 block">One week after birth</span>
+                        <span className="text-xs text-amber-600 font-medium mt-1 block">⏳ Update from child profile</span>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Info banner */}
+                  <div className="mt-4 flex items-start space-x-3 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <span className="text-amber-500 text-lg flex-shrink-0">ℹ️</span>
+                    <p className="text-xs text-amber-800">
+                      <strong>How to record Day 3 &amp; Day 7 visits:</strong> After registering the child, open the child&apos;s
+                      profile and click the Day 3 or Day 7 card in the <strong>Newborn Care &amp; Protection</strong> section
+                      to mark it as completed when the visit occurs.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Tetanus Protection */}
+                <div className="border-t border-blue-200/60 pt-4">
+                  <div className="flex items-start space-x-3">
+                    <div className="flex items-center h-5 mt-0.5">
+                      <input
+                        type="checkbox"
+                        id="protectedAtBirth"
+                        name="protectedAtBirth"
+                        checked={formData.protectedAtBirth}
+                        onChange={handleInputChange}
+                        className="h-5 w-5 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="protectedAtBirth" className="text-sm font-semibold text-gray-900 cursor-pointer block">
+                        Infant is Protected at Birth (Tetanus)
+                      </label>
+                      <span className="text-xs text-gray-600 block mt-0.5">
+                        Tick if the mother received Tetanus Toxoid (TT) vaccines during pregnancy protecting the newborn from neonatal tetanus.
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
 

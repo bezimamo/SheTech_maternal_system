@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { childrenApi } from '@/lib/healthcare-api';
+import { childrenApi, vaccinationsApi } from '@/lib/healthcare-api';
 
 interface Child {
   _id: string;
@@ -30,6 +30,10 @@ interface Child {
   healthStatus: 'HEALTHY' | 'NEEDS_ATTENTION' | 'CRITICAL';
   registrationDate: string;
   deceased: boolean;
+  pncVisitDay1?: boolean;
+  pncVisitDay3?: boolean;
+  pncVisitDay7?: boolean;
+  protectedAtBirth?: boolean;
 }
 
 export default function ChildDetail() {
@@ -42,6 +46,32 @@ export default function ChildDetail() {
   const [latestGrowth, setLatestGrowth] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pncUpdating, setPncUpdating] = useState<string | null>(null);
+  const [pncSuccess, setPncSuccess] = useState<string | null>(null);
+  const [counselingPrompts, setCounselingPrompts] = useState<any>(null);
+
+  const FALLBACK_PROMPTS = {
+    exclusiveBreastfeeding: {
+      title: "Exclusive Breastfeeding Guidance",
+      text: "Exclusive breastfeeding is medically sufficient for an infant up to 6 months of age. Breast milk provides vital, bioavailable nutrients required for optimal initial growth and immune system development."
+    },
+    nutritionalTransition: {
+      title: "Nutritional Transition Guidance",
+      text: "Upon reaching 6 months of age, the infant should be introduced to appropriate solid, semi-solid, or soft complementary foods alongside continued breastfeeding. Additional nutrition can be prepared from varied groups including cereals, meats, eggs, vegetables, and fruits. Breastfeeding should ideally continue up to 2 years of age and beyond."
+    },
+    heliotherapy: {
+      title: "Heliotherapy (Sunlight) Guidance",
+      text: "Infants require daily exposure to direct, safe sunlight for approximately 20 to 30 minutes. Natural sunlight exposure is critical for synthesizing Vitamin D, promoting bone density, and maintaining overall skin health."
+    },
+    polioPrevention: {
+      title: "Polio Prevention Awareness",
+      text: "Compliance with the oral and inactivated polio vaccine series directly prevents poliomyelitis, protecting children against permanent acute flaccid paralysis and lifelong physical disability."
+    },
+    clinicalCareSeeking: {
+      title: "Clinical Care Seeking Directive",
+      text: "Caregivers are advised that if an infant displays any sign of systemic illness, lethargy, poor feeding, or persistent adverse events following immunization (AEFI), they must seek immediate medical evaluation at the nearest designated health care facility."
+    }
+  };
 
   useEffect(() => {
     if (childId) {
@@ -54,20 +84,39 @@ export default function ChildDetail() {
       setLoading(true);
       setError(null);
 
-      const [childData, growthData, latestGrowthData] = await Promise.all([
+      const [childData, growthData, latestGrowthData, prompts] = await Promise.all([
         childrenApi.getById(childId),
         childrenApi.getGrowthRecords(childId),
-        childrenApi.getLatestGrowthRecord(childId).catch(() => null)
+        childrenApi.getLatestGrowthRecord(childId).catch(() => null),
+        vaccinationsApi.getCounselingGuidance().catch(() => null)
       ]);
 
       setChild(childData);
       setGrowthHistory(growthData);
       setLatestGrowth(latestGrowthData);
+      setCounselingPrompts(prompts);
     } catch (err: any) {
       console.error('Error fetching child data:', err);
       setError(err.message || 'Failed to load child data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePncUpdate = async (field: 'pncVisitDay1' | 'pncVisitDay3' | 'pncVisitDay7', currentValue: boolean) => {
+    if (!child) return;
+    setPncUpdating(field);
+    setPncSuccess(null);
+    try {
+      const updated = await childrenApi.update(childId, { [field]: !currentValue });
+      setChild(prev => prev ? { ...prev, [field]: !currentValue } : prev);
+      setPncSuccess(field);
+      setTimeout(() => setPncSuccess(null), 3000);
+    } catch (err: any) {
+      console.error('Failed to update PNC visit:', err);
+      alert('Failed to update PNC visit. Please try again.');
+    } finally {
+      setPncUpdating(null);
     }
   };
 
@@ -262,6 +311,121 @@ export default function ChildDetail() {
               </div>
             </div>
 
+            {/* Newborn Care & Protection */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Newborn Care &amp; Protection</h2>
+                <span className="text-xs text-gray-400 bg-gray-50 border border-gray-200 px-2 py-1 rounded-full">
+                  Click a visit to update status
+                </span>
+              </div>
+
+              {/* PNC Interactive Visit Cards */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">Post-Natal Care (PNC) Visits</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+                  {/* Day 1 */}
+                  {[
+                    { field: 'pncVisitDay1' as const, label: 'Day 1 Visit', day: '1', description: 'Within 24 hours of birth', value: child.pncVisitDay1 },
+                    { field: 'pncVisitDay3' as const, label: 'Day 3 Visit', day: '3', description: '48–72 hours after birth', value: child.pncVisitDay3 },
+                    { field: 'pncVisitDay7' as const, label: 'Day 7 Visit', day: '7', description: 'One week after birth', value: child.pncVisitDay7 },
+                  ].map(({ field, label, day, description, value }) => (
+                    <button
+                      key={field}
+                      id={`pnc-visit-${day}`}
+                      onClick={() => handlePncUpdate(field, !!value)}
+                      disabled={pncUpdating === field}
+                      className={`relative w-full text-left p-4 rounded-xl border-2 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                        value
+                          ? 'border-green-400 bg-green-50 focus:ring-green-400'
+                          : 'border-gray-200 bg-white hover:border-blue-300 hover:bg-blue-50 focus:ring-blue-400'
+                      } ${
+                        pncUpdating === field ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg flex-shrink-0 ${
+                          value ? 'bg-green-500 text-white' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {pncUpdating === field ? (
+                            <svg className="animate-spin w-5 h-5" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                            </svg>
+                          ) : value ? '✓' : day}
+                        </div>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                          value ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          {value ? 'Done' : 'Pending'}
+                        </span>
+                      </div>
+                      <div className="mt-3">
+                        <p className="text-sm font-semibold text-gray-900">{label}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+                      </div>
+                      {pncSuccess === field && (
+                        <div className="absolute inset-x-0 bottom-0 h-1 bg-green-400 rounded-b-xl"/>
+                      )}
+                      {!value && (
+                        <p className="text-xs text-blue-600 mt-2 font-medium">Click to mark completed →</p>
+                      )}
+                      {value && (
+                        <p className="text-xs text-gray-400 mt-2">Click to undo</p>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* PNC completion summary banner */}
+                <div className={`mt-4 p-3 rounded-lg flex items-center space-x-3 ${
+                  child.pncVisitDay1 && child.pncVisitDay3 && child.pncVisitDay7
+                    ? 'bg-green-50 border border-green-200'
+                    : (!child.pncVisitDay1 && !child.pncVisitDay3 && !child.pncVisitDay7)
+                      ? 'bg-gray-50 border border-gray-200'
+                      : 'bg-yellow-50 border border-yellow-200'
+                }`}>
+                  <span className="text-xl">
+                    {child.pncVisitDay1 && child.pncVisitDay3 && child.pncVisitDay7 ? '🎉' :
+                     (!child.pncVisitDay1 && !child.pncVisitDay3 && !child.pncVisitDay7) ? '📋' : '⏳'}
+                  </span>
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {[child.pncVisitDay1, child.pncVisitDay3, child.pncVisitDay7].filter(Boolean).length} / 3 PNC visits completed
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {child.pncVisitDay1 && child.pncVisitDay3 && child.pncVisitDay7
+                        ? 'All post-natal care visits are complete. Great work!'
+                        : 'Update each visit as it is conducted by the healthcare team.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Neonatal Tetanus Protection */}
+              <div>
+                <h3 className="text-sm font-semibold text-gray-600 mb-3 uppercase tracking-wide">Neonatal Tetanus Protection</h3>
+                <div className={`p-4 rounded-xl border-2 flex items-center space-x-3 ${
+                  child.protectedAtBirth
+                    ? 'bg-green-50 border-green-300'
+                    : 'bg-yellow-50 border-yellow-300'
+                }`}>
+                  <span className="text-3xl">{child.protectedAtBirth ? '🛡️' : '⚠️'}</span>
+                  <div>
+                    <span className={`font-semibold block text-sm ${child.protectedAtBirth ? 'text-green-800' : 'text-yellow-800'}`}>
+                      {child.protectedAtBirth ? 'Protected at Birth' : 'Not Protected at Birth'}
+                    </span>
+                    <span className="text-xs text-gray-600 block mt-0.5">
+                      {child.protectedAtBirth
+                        ? 'Newborn is protected against neonatal tetanus.'
+                        : 'No maternal tetanus immunizations recorded.'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {/* Mother Information */}
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Mother Information</h2>
@@ -292,6 +456,39 @@ export default function ChildDetail() {
                     </a>
                   </>
                 )}
+              </div>
+            </div>
+
+            {/* Pediatric Health Education & Counseling Guidance */}
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <span>📚</span> Pediatric Health Education &amp; Counseling
+              </h2>
+              <p className="text-sm text-gray-600 mb-6">
+                Active parental guidance and clinical directives to support infant growth and immune development.
+              </p>
+              
+              <div className="space-y-4">
+                {[
+                  { key: 'exclusiveBreastfeeding', icon: '🍼', color: 'from-blue-50 to-blue-100/50 border-blue-200 text-blue-900' },
+                  { key: 'nutritionalTransition', icon: '🥣', color: 'from-orange-50 to-orange-100/50 border-orange-200 text-orange-900' },
+                  { key: 'heliotherapy', icon: '☀️', color: 'from-yellow-50 to-yellow-100/50 border-yellow-200 text-yellow-900' },
+                  { key: 'polioPrevention', icon: '🛡️', color: 'from-purple-50 to-purple-100/50 border-purple-200 text-purple-900' },
+                  { key: 'clinicalCareSeeking', icon: '🏥', color: 'from-red-50 to-red-100/50 border-red-200 text-red-900' },
+                ].map(promptSlot => {
+                  const promptData = (counselingPrompts || FALLBACK_PROMPTS)[promptSlot.key];
+                  if (!promptData) return null;
+                  
+                  return (
+                    <div key={promptSlot.key} className={`flex items-start gap-4 p-4 rounded-xl border bg-gradient-to-br ${promptSlot.color}`}>
+                      <span className="text-3xl p-1 bg-white rounded-lg shadow-sm">{promptSlot.icon}</span>
+                      <div>
+                        <h4 className="font-bold text-sm">{promptData.title}</h4>
+                        <p className="text-xs leading-relaxed mt-1 text-gray-700">{promptData.text}</p>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>

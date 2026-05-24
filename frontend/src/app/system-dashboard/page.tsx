@@ -104,8 +104,11 @@ export default function SystemDashboard() {
 
       setStats(newStats);
       setRecentActivities(activities);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to fetch dashboard data:', error);
+      if (error?.name === 'UnauthorizedError' || error?.message === 'Unauthorized') {
+        logout();
+      }
     } finally {
       setLoading(false);
     }
