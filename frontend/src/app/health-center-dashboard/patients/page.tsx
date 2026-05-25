@@ -63,7 +63,7 @@ export default function HealthCenterPatientsPage() {
                 <Link href="/health-center-dashboard" className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium">
                   Back to Dashboard
                 </Link>
-                <button onClick={logout} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors duration-200">
+                <button onClick={() => logout()} className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors duration-200">
                   Logout
                 </button>
               </div>

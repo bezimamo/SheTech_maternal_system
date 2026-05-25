@@ -71,7 +71,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 
 const initialState: AuthState = {
   user: null,
-  isLoading: false,
+  isLoading: true,   // true until the localStorage hydration useEffect completes
   error: null,
 };
 
@@ -113,7 +113,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           localStorage.removeItem('auth_token');
           localStorage.removeItem('token');
           sessionStorage.removeItem('token');
+          // No valid session — mark loading done so ProtectedRoute can redirect to /auth
+          dispatch({ type: 'LOGOUT' });
         }
+      } else {
+        // No token or saved user — mark loading done so ProtectedRoute can redirect to /auth
+        dispatch({ type: 'LOGOUT' });
       }
     };
 

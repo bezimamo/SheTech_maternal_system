@@ -13,7 +13,7 @@ import { uploadReferralDoc } from "@/services/files"
 import { submitFeedback } from "@/services/referrals"
 import { useReferral, useRespondReferral, useSendReferral } from "@/hooks/useReferrals"
 import type { User } from "@/types/auth"
-import { hospitalsApi, referralsApi } from "@/lib/healthcare-api"
+import { hospitalsApi, referralsApi, mothersApi } from "@/lib/healthcare-api"
 import { API_BASE } from "@/lib/api"
 
 function statusVariant(status?: string) {
@@ -79,17 +79,12 @@ export default function ReferralDetailsPage() {
       return
     }
 
-    fetch(`${API_BASE}/mothers/${motherId}`)
-      .then((res) => {
-        if (!res.ok) {
-          throw new Error(`Failed to fetch mother details: ${res.status}`)
-        }
-        return res.json()
-      })
-      .then((data) => {
+    // Use mothersApi.getById which includes the Authorization header
+    mothersApi.getById(motherId)
+      .then((data: any) => {
         setMotherDetails(data)
       })
-      .catch((err) => {
+      .catch((err: any) => {
         console.error('Error fetching mother details:', err)
         setMotherDetails(null)
       })
@@ -140,12 +135,14 @@ export default function ReferralDetailsPage() {
     }
   }
 
+  const isLiaisonOfficer = user?.role === 'LIAISON_OFFICER'
+
   React.useEffect(() => {
     const canSend = ['LIAISON_OFFICER', 'DOCTOR', 'NURSE', 'MIDWIFE', 'HOSPITAL_ADMIN', 'HEALTH_CENTER_ADMIN'].includes(user?.role ?? '')
-    if (canSend && referral.data?.status === 'DRAFT' && isSenderHospital) {
+    if (canSend && referral.data?.status === 'DRAFT' && isSenderHospital && !isLiaisonOfficer) {
       loadHospitals()
     }
-  }, [user?.role, referral.data?.status, fromHospitalId, isSenderHospital])
+  }, [user?.role, referral.data?.status, fromHospitalId, isSenderHospital, isLiaisonOfficer])
 
   const [targetHospitalId, setTargetHospitalId] = React.useState("")
   const [selectedHospital, setSelectedHospital] = React.useState<any>(null)
@@ -177,23 +174,24 @@ export default function ReferralDetailsPage() {
   const canGenerateQr =
     isSenderHospital &&
     ['LIAISON_OFFICER', 'DOCTOR', 'HEALTH_CENTER_ADMIN', 'HOSPITAL_ADMIN'].includes(user?.role ?? '') &&
-    referral.data?.status === "ACCEPTED" &&
-    !!referral.data?.referralCode
+    ['PENDING', 'ACCEPTED'].includes(referral.data?.status ?? '')
 
+  React.useEffect(() => {
+    const url = (referral.data as any)?.qrCodeUrl
+    if (url) setQrDataUrl(url)
+  }, [(referral.data as any)?.qrCodeUrl])
 
   async function generateQr() {
-    if (!referral.data?.referralCode) return
     setGeneratingQr(true)
     try {
-      const QRCode = (await import("qrcode")).default
-      const dataUrl = await QRCode.toDataURL(referral.data.referralCode, {
-        errorCorrectionLevel: "H",
-        margin: 2,
-        width: 320,
-      })
-      setQrDataUrl(dataUrl)
+      const updated = await referralsApi.generateQrCode(id)
+      if (updated?.qrCodeUrl) {
+        setQrDataUrl(updated.qrCodeUrl)
+      }
+      toast.success('QR code generated and saved to Cloudinary')
+      referral.refetch()
     } catch (err: any) {
-      toast.error(err?.message ?? "Could not generate QR code")
+      toast.error(err?.response?.data?.message ?? err?.message ?? "Could not generate QR code")
     } finally {
       setGeneratingQr(false)
     }
@@ -325,7 +323,7 @@ export default function ReferralDetailsPage() {
                   {canGenerateQr && (
                     <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                       <div className="mb-3 text-sm text-slate-700">
-                        This referral has been accepted by the receiving liaison officer. Generate a QR code so the mother can use it later at gate check-in.
+                        Generate a QR code (stored in Cloudinary) so the mother can use it at gate check-in. The code encodes the referral and mother IDs.
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <Button disabled={generatingQr} onClick={generateQr}>
@@ -486,37 +484,51 @@ export default function ReferralDetailsPage() {
                   🏥 Send Referral to Receiving Facility
                 </CardTitle>
                 <CardDescription>
-                  Choose from available hospitals, clinics, or health centers to send this referral to the receiving liaison officer
+                  {isLiaisonOfficer
+                    ? 'Send this referral to the destination facility chosen when the draft was created'
+                    : 'Choose from available hospitals, clinics, or health centers to send this referral to the receiving liaison officer'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <div className="mb-2 text-sm font-medium text-slate-700">🏥 Select Destination Facility</div>
-                  <div className="flex gap-2">
-                      <select
-                        value={targetHospitalId}
-                        onChange={(e) => {
-                          const hospital = hospitals.find(h => h._id === e.target.value)
-                          setSelectedHospital(hospital || null)
-                          setTargetHospitalId(e.target.value)
-                        }}
-                        className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      >
-                        <option value="">Choose a facility...</option>
-                        {hospitals.map((hospital) => (
-                          <option key={hospital._id} value={hospital._id}>
-                            {hospital.name} - {hospital.type} ({hospital.location})
-                          </option>
-                        ))}
-                      </select>
-                      {isLoadingHospitals && (
-                        <div className="text-xs text-slate-500 mt-1">Loading hospitals...</div>
+                  <div className="mb-2 text-sm font-medium text-slate-700">
+                    {isLiaisonOfficer ? '🏥 Destination Facility' : '🏥 Select Destination Facility'}
+                  </div>
+                  {isLiaisonOfficer ? (
+                    <div className="p-3 bg-blue-50 rounded-lg text-sm text-slate-800">
+                      {toHospitalId
+                        ? resolveHospitalName((referral.data as any)?.toHospital)
+                        : 'No destination set on this draft. Ask the referral creator to choose a destination facility.'}
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex gap-2">
+                        <select
+                          value={targetHospitalId}
+                          onChange={(e) => {
+                            const hospital = hospitals.find(h => h._id === e.target.value)
+                            setSelectedHospital(hospital || null)
+                            setTargetHospitalId(e.target.value)
+                          }}
+                          className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">Choose a facility...</option>
+                          {hospitals.map((hospital) => (
+                            <option key={hospital._id} value={hospital._id}>
+                              {hospital.name} - {hospital.type} ({hospital.location})
+                            </option>
+                          ))}
+                        </select>
+                        {isLoadingHospitals && (
+                          <div className="text-xs text-slate-500 mt-1">Loading hospitals...</div>
+                        )}
+                      </div>
+                      {selectedHospital && (
+                        <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
+                          <strong>Selected:</strong> {selectedHospital.name} - {selectedHospital.type}
+                        </div>
                       )}
-                    </div>
-                  {selectedHospital && (
-                    <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
-                      <strong>Selected:</strong> {selectedHospital.name} - {selectedHospital.type}
-                    </div>
+                    </>
                   )}
                 </div>
 
@@ -539,10 +551,12 @@ export default function ReferralDetailsPage() {
 
                 <div className="flex flex-wrap gap-3">
                   <Button
-                    disabled={send.isPending || !targetHospitalId}
+                    disabled={send.isPending || !(isLiaisonOfficer ? toHospitalId : targetHospitalId)}
                     onClick={async () => {
                       try {
-                        await send.mutateAsync({ id, targetHospitalId, liaisonNote })
+                        const destId = isLiaisonOfficer ? toHospitalId : targetHospitalId
+                        if (!destId) return
+                        await send.mutateAsync({ id, targetHospitalId: destId, liaisonNote })
                         toast.success('Referral sent successfully')
                         referral.refetch()
                       } catch (err: any) {
@@ -552,39 +566,35 @@ export default function ReferralDetailsPage() {
                   >
                     Send Referral
                   </Button>
-                  <Button variant="secondary" onClick={() => {
-                    setSelectedHospital(null)
-                    setTargetHospitalId("")
-                    setHospitalSearch("")
-                    setLiaisonNote("")
-                  }}>
-                    Clear
-                  </Button>
+                  {!isLiaisonOfficer && (
+                    <Button variant="secondary" onClick={() => {
+                      setSelectedHospital(null)
+                      setTargetHospitalId("")
+                      setHospitalSearch("")
+                      setLiaisonNote("")
+                    }}>
+                      Clear
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
           )}
 
-          {(user?.role === "SPECIALIST" ||
-            user?.role === "DOCTOR" ||
-            user?.role === "NURSE" ||
-            user?.role === "MIDWIFE" ||
-            user?.role === "LIAISON_OFFICER") &&
-            (referral.data?.status === "ACCEPTED" || referral.data?.status === "CHECKED_IN") &&
-            !(referral.data as any)?.isUnlocked && (
+          {isReceiverHospital &&
+            ["DOCTOR", "NURSE", "MIDWIFE", "LIAISON_OFFICER", "HOSPITAL_ADMIN", "HEALTH_CENTER_ADMIN"].includes(user?.role ?? "") &&
+            referral.data?.status === "PENDING" && (
               <Card>
               <CardHeader>
                 <CardTitle>Respond (Accept / Reject)</CardTitle>
+                <CardDescription>
+                  Review this incoming referral and accept or reject before gate check-in.
+                </CardDescription>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-3">
-                {referral.data?.status !== "CHECKED_IN" && (
-                  <p className="text-xs text-slate-600">
-                    Acceptance/rejection becomes available only after gate check-in (QR/referral code verification).
-                  </p>
-                )}
                 <Button
                   variant="secondary"
-                  disabled={respond.isPending || referral.data?.status !== "CHECKED_IN"}
+                  disabled={respond.isPending}
                   onClick={async () => {
                     try {
                       await respond.mutateAsync({ id, payload: { status: "ACCEPTED" } })
@@ -599,7 +609,7 @@ export default function ReferralDetailsPage() {
                 </Button>
                 <Button
                   variant="destructive"
-                  disabled={respond.isPending || referral.data?.status !== "CHECKED_IN"}
+                  disabled={respond.isPending}
                   onClick={async () => {
                     try {
                       await respond.mutateAsync({

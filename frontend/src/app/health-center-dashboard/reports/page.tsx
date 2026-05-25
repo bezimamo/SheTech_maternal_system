@@ -193,7 +193,7 @@ export default function HealthCenterReportsPage() {
                 <Link href="/health-center-dashboard" className="text-sm text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md border border-gray-200 hover:bg-gray-50">← Dashboard</Link>
                 <button onClick={fetchAll} disabled={loading} className="px-4 py-2 bg-teal-600 text-white text-sm rounded-lg hover:bg-teal-700 disabled:opacity-50 transition-colors">{loading ? 'Refreshing…' : 'Refresh'}</button>
                 <button onClick={() => window.print()} className="px-4 py-2 bg-gray-700 text-white text-sm rounded-lg hover:bg-gray-800 transition-colors">Print</button>
-                <button onClick={logout} className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors">Logout</button>
+                <button onClick={() => logout()} className="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition-colors">Logout</button>
               </div>
             </div>
           </div>

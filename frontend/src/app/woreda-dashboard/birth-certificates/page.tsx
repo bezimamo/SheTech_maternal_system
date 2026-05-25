@@ -24,6 +24,9 @@ interface Child {
   fatherName?: string;
   fatherPhone?: string;
   birthLocation?: string;
+  sentToWoreda?: boolean;
+  sentToWoredaAt?: string;
+  sentToWoredaBy?: string;
   motherId?: { _id: string; name: string; phone: string; age?: number; address?: string };
   birthHospital?: { _id: string; name: string; type: string };
   deliveredBy?: { _id: string; name: string; role: string };
@@ -61,8 +64,13 @@ export default function BirthCertificatesPage() {
     try {
       setLoading(true);
       setError(null);
-      const woredaId = user?.woredaId;
-      if (!woredaId) throw new Error('No woreda assigned to your account');
+      // woredaId is normalized to a string in AuthContext, but guard against object shape
+      const woredaId = user?.woredaId
+        ? typeof user.woredaId === 'string'
+          ? user.woredaId
+          : (user.woredaId as any)?._id?.toString() ?? (user.woredaId as any)?.toString()
+        : null;
+      if (!woredaId) throw new Error('No woreda assigned to your account. Contact your administrator.');
       const data = await childrenApi.getByWoreda(woredaId);
       setChildren(Array.isArray(data) ? data : []);
     } catch (err: any) {
@@ -121,6 +129,7 @@ export default function BirthCertificatesPage() {
 
   const pending = children.filter(c => !c.verified).length;
   const issued = children.filter(c => c.verified).length;
+  const sentToWoreda = children.filter(c => !c.verified && c.sentToWoreda).length;
 
   return (
     <ProtectedRoute requiredRole="WOREDA_ADMIN">
@@ -142,7 +151,7 @@ export default function BirthCertificatesPage() {
               </div>
               <div className="flex items-center gap-3">
                 <Link href="/woreda-dashboard" className="text-sm text-blue-600 hover:underline whitespace-nowrap">← Dashboard</Link>
-                <button onClick={logout} className="whitespace-nowrap bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm">Logout</button>
+                <button onClick={() => logout()} className="whitespace-nowrap bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm">Logout</button>
               </div>
             </div>
           </div>
@@ -150,7 +159,7 @@ export default function BirthCertificatesPage() {
 
         <main className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8 print:hidden">
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-4 gap-4 mb-6">
             <div className="bg-white rounded-lg shadow p-5 border-l-4 border-blue-500">
               <p className="text-sm text-gray-500">Total Registered</p>
               <p className="text-3xl font-bold text-gray-900">{children.length}</p>
@@ -158,6 +167,10 @@ export default function BirthCertificatesPage() {
             <div className="bg-white rounded-lg shadow p-5 border-l-4 border-yellow-500">
               <p className="text-sm text-gray-500">Pending Certificate</p>
               <p className="text-3xl font-bold text-gray-900">{pending}</p>
+            </div>
+            <div className="bg-white rounded-lg shadow p-5 border-l-4 border-blue-400">
+              <p className="text-sm text-gray-500">Sent to Woreda</p>
+              <p className="text-3xl font-bold text-gray-900">{sentToWoreda}</p>
             </div>
             <div className="bg-white rounded-lg shadow p-5 border-l-4 border-green-500">
               <p className="text-sm text-gray-500">Certificates Issued</p>
@@ -242,6 +255,10 @@ export default function BirthCertificatesPage() {
                         {child.verified ? (
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
                             ✓ Issued
+                          </span>
+                        ) : child.sentToWoreda ? (
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                            📨 Sent to Woreda
                           </span>
                         ) : (
                           <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">

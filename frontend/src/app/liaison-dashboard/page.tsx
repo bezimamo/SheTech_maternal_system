@@ -14,6 +14,21 @@ function pickName(obj: any) {
   return obj?.fullName ?? obj?.name ?? "—"
 }
 
+function getDestinationId(r: any): string | null {
+  if (!r?.toHospital) return null
+  if (typeof r.toHospital === "object") return r.toHospital._id ?? null
+  return r.toHospital
+}
+
+function formatDestination(r: any): string {
+  if (!r?.toHospital) return "Not set — ask the referral creator to choose a destination"
+  if (typeof r.toHospital === "object") {
+    const type = r.toHospital.type === "HEALTH_CENTER" ? "Health Center" : "Hospital"
+    return `${r.toHospital.name} (${type})`
+  }
+  return "—"
+}
+
 const StatCard = ({ title, value, color, icon }: { title: string; value: number; color: string; icon: string }) => (
   <div className="bg-white rounded-lg shadow-md p-6 border-l-4" style={{ borderLeftColor: color }}>
     <div className="flex items-center justify-between">
@@ -40,8 +55,6 @@ export default function LiaisonDashboardPage() {
   const send = useSendReferral()
 
   const [sendingId, setSendingId] = React.useState<string | null>(null)
-  const [targetHospitalId, setTargetHospitalId] = React.useState<Record<string, string>>({})
-  const [hospitals, setHospitals] = React.useState<any[]>([])
   const [incomingFilter, setIncomingFilter] = React.useState('ALL')
 
   const filteredIncoming = React.useMemo(() => {
@@ -49,15 +62,6 @@ export default function LiaisonDashboardPage() {
     if (incomingFilter === 'ALL') return incoming.data;
     return incoming.data.filter((r: any) => r.status === incomingFilter);
   }, [incoming.data, incomingFilter]);
-
-  // Load hospitals for the send dropdown
-  React.useEffect(() => {
-    import('@/lib/healthcare-api').then(({ hospitalsApi }) => {
-      hospitalsApi.getAll().then((data: any[]) => {
-        setHospitals(Array.isArray(data) ? data : [])
-      }).catch(() => {})
-    })
-  }, [])
 
   const [checkinCode, setCheckinCode] = React.useState("")
   const [isSubmittingCheckin, setIsSubmittingCheckin] = React.useState(false)
@@ -369,30 +373,21 @@ export default function LiaisonDashboardPage() {
                       <p className="text-sm text-gray-600">By: {typeof r.createdBy === "object" ? pickName(r.createdBy) : "—"}</p>
                       
                       <div className="mt-3 pt-3 border-t border-gray-100">
-                        <select
-                          value={targetHospitalId[r._id] ?? ""}
-                          onChange={(e) => setTargetHospitalId(prev => ({ ...prev, [r._id]: e.target.value }))}
-                          className="w-full text-sm px-2 py-2 mb-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        >
-                          <option value="">Select destination facility…</option>
-                          {hospitals.map((h: any) => (
-                            <option key={h._id} value={h._id}>
-                              {h.name} ({h.type === 'HEALTH_CENTER' ? 'Health Center' : 'Hospital'})
-                            </option>
-                          ))}
-                        </select>
+                        <p className="text-sm text-gray-700 mb-2">
+                          <span className="font-medium">Destination:</span>{" "}
+                          {formatDestination(r)}
+                        </p>
                         <div className="flex gap-2">
                           <button
                             className="flex-1 text-sm px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                            disabled={!targetHospitalId[r._id] || sendingId === r._id}
+                            disabled={!getDestinationId(r) || sendingId === r._id}
                             onClick={async () => {
-                              const dest = targetHospitalId[r._id]
+                              const dest = getDestinationId(r)
                               if (!dest) return
                               setSendingId(r._id)
                               try {
                                 await send.mutateAsync({ id: r._id, targetHospitalId: dest })
                                 toast.success("Referral sent")
-                                setTargetHospitalId(prev => { const n = { ...prev }; delete n[r._id]; return n })
                                 drafts.refetch()
                                 outbox.refetch()
                               } catch (err: any) {
@@ -456,6 +451,7 @@ export default function LiaisonDashboardPage() {
                           <span className={`px-2 py-0.5 rounded text-xs font-medium ${
                             r.status === 'ACCEPTED' ? 'bg-green-100 text-green-800' :
                             r.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
+                            r.status === 'CHECKED_IN' ? 'bg-purple-100 text-purple-800' :
                             r.status === 'COMPLETED' ? 'bg-gray-100 text-gray-800' :
                             'bg-orange-100 text-orange-800'
                           }`}>

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 
 interface Mother {
   _id: string;
@@ -139,10 +140,10 @@ export function WoredaStats({ mothers, children, facilities }: WoredaStatsProps)
               </div>
             </div>
           </div>
-          <a href="/woreda-dashboard/birth-certificates"
+          <Link href="/woreda-dashboard/birth-certificates"
             className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 whitespace-nowrap">
             📄 Manage Certificates
-          </a>
+          </Link>
         </div>
       </div>
 
