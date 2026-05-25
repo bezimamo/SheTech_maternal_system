@@ -7,10 +7,10 @@ import { api } from '@/lib/api';
 const getDashboardForRole = (role: string): string => {
   switch (role) {
     case 'SUPER_ADMIN':
-    case 'SYSTEM_ADMIN':
-      return '/system-dashboard';
     case 'MOH_ADMIN':
       return '/moh-dashboard';
+    case 'SYSTEM_ADMIN':
+      return '/system-dashboard';
     case 'HOSPITAL_ADMIN':
       return '/hospital-dashboard';
     case 'HEALTH_CENTER_ADMIN':

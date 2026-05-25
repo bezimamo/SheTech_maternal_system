@@ -167,7 +167,7 @@ export default function SystemDashboard() {
   };
 
   return (
-    <ProtectedRoute requiredRole={["SYSTEM_ADMIN", "SUPER_ADMIN"]}>
+    <ProtectedRoute requiredRole={["SYSTEM_ADMIN"]}>
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <header className="bg-white shadow-sm border-b border-gray-200">
