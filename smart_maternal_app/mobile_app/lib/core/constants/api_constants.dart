@@ -1,7 +1,10 @@
+import 'package:flutter/foundation.dart';
+
 class ApiConstants {
-  // Use the host machine IP address when testing on a physical Android device.
-  // For emulator testing, use 10.0.2.2 instead of localhost.
-  static const String baseUrl = 'http://10.161.125.249:3001/api';
+  // Use localhost for web, 10.0.2.2 for emulator, or host IP for physical device
+  static const String baseUrl = kIsWeb 
+      ? 'http://localhost:3001/api'
+      : 'http://10.0.2.2:3001/api';
   
   static const String authEndpoint = '/auth';
   static const String loginEndpoint = '/auth/login';

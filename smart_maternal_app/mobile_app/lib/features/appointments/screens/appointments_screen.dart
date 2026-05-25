@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+import '../../../core/constants/app_translations.dart';
+import '../../../core/services/language_service.dart';
 import '../../child_growth/services/child_service.dart';
 import '../../profile/services/profile_service.dart';
 import '../models/schedule_model.dart';
@@ -131,6 +134,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageService>();
+    
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F5),
       body: NestedScrollView(
@@ -152,10 +157,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                     fontSize: 13,
                   ),
                   isScrollable: true,
-                  tabs: const [
-                    Tab(text: 'Pregnancy Visits'),
-                    Tab(text: 'Maternal Vaccination'),
-                    Tab(text: 'Child Vaccination'),
+                  tabs: [
+                    Tab(text: lang.isAmharic ? 'የእርግዝና ግብይቶች' : 'Pregnancy Visits'),
+                    Tab(text: AppTranslations.get('maternal_vaccination', lang.isAmharic)),
+                    Tab(text: AppTranslations.get('child_vaccination', lang.isAmharic)),
                   ],
                 ),
               ),
@@ -169,7 +174,10 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                   children: [
                     const CircularProgressIndicator(color: AppointmentTheme.brown),
                     const SizedBox(height: 16),
-                    Text('Loading appointments...', style: TextStyle(color: Colors.grey.shade600)),
+                    Text(
+                      AppTranslations.get('loading', lang.isAmharic), 
+                      style: TextStyle(color: Colors.grey.shade600)
+                    ),
                   ],
                 ),
               )
@@ -180,9 +188,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                   child: TabBarView(
                     controller: _tabController,
                     children: [
-                      _buildVisitsTab(),
-                      _buildMaternalVaccinesTab(),
-                      _buildChildVaccinesTab(),
+                      _buildVisitsTab(lang.isAmharic),
+                      _buildMaternalVaccinesTab(lang.isAmharic),
+                      _buildChildVaccinesTab(lang.isAmharic),
                     ],
                   ),
                 ),
@@ -191,12 +199,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
     );
   }
 
-  Widget _buildVisitsTab() {
+  Widget _buildVisitsTab(bool isAmharic) {
     if (_scheduleData == null || _scheduleData!.visits.isEmpty) {
       return _buildEmptyState(
         Icons.pregnant_woman_outlined,
-        'No pregnancy visits scheduled yet.',
-        'Your ANC follow-ups will appear here once registered by your health center.',
+        isAmharic ? 'ምንም የእርግዝና ግብይቶች አልተዘጋጁምንም' : 'No pregnancy visits scheduled yet.',
+        isAmharic ? 'የእርስዎ ANC ተከታታዮች በጤና ተቋምዎ ከተመዘገቡ በኋላ እዚህ ይታያሉ' : 'Your ANC follow-ups will appear here once registered by your health center.',
       );
     }
 
@@ -229,7 +237,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
           if (next != null)
             ReminderBanner(
               message:
-                  'Your next ANC visit is on ${DateFormat('EEEE, MMM d').format(next.visitDate)} (Week ${next.week}).',
+                  isAmharic ? 'ቀጣይ ANC ግብይትዎ ${DateFormat('EEEE, MMM d').format(next.visitDate)} (ሳምንት ${next.week}) ነው' : 'Your next ANC visit is on ${DateFormat('EEEE, MMM d').format(next.visitDate)} (Week ${next.week}).',
               icon: Icons.event_available,
             ),
           ...warnings.map(
@@ -240,21 +248,21 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
             ),
           ),
           if (next != null) ...[
-            _sectionTitle('Next Visit'),
+            _sectionTitle(isAmharic ? 'ቀጣይ ግብይት' : 'Next Visit'),
             VisitCard(visit: next, isNext: true),
           ],
           if (upcoming.isNotEmpty) ...[
-            _sectionTitle('Upcoming Visits'),
+            _sectionTitle(isAmharic ? 'የሚመጡ ግብይቶች' : 'Upcoming Visits'),
             ...upcoming
                 .where((v) => next == null || v.id != next.id)
                 .map((v) => VisitCard(visit: v)),
           ],
           if (missed.isNotEmpty) ...[
-            _sectionTitle('Missed / Overdue'),
+            _sectionTitle(isAmharic ? 'የተለፈው / በጊዜው በላይ' : 'Missed / Overdue'),
             ...missed.map((v) => VisitCard(visit: v)),
           ],
           if (completed.isNotEmpty) ...[
-            _sectionTitle('Previous Visits'),
+            _sectionTitle(isAmharic ? 'የቀደሙ ግብይቶች' : 'Previous Visits'),
             ...completed.map((v) => VisitCard(visit: v)),
           ],
         ],
@@ -262,7 +270,7 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
     );
   }
 
-  Widget _buildMaternalVaccinesTab() {
+  Widget _buildMaternalVaccinesTab(bool isAmharic) {
     final vaccines = _motherVaccinationSchedule?.vaccines.isNotEmpty == true
         ? _motherVaccinationSchedule!.vaccines
         : (_scheduleData?.vaccines ?? []);
@@ -276,8 +284,8 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
     if (vaccines.isEmpty && slots.every((s) => s.record == null)) {
       return _buildEmptyState(
         Icons.vaccines_outlined,
-        'No maternal vaccinations recorded yet.',
-        'TD1–TD5 tetanus doses will appear here when scheduled by your health worker.',
+        isAmharic ? 'ምንም የእናት ክትባቶች አልተመዘገቡም' : 'No maternal vaccinations recorded yet.',
+        isAmharic ? 'TD1–TD5 የቴታነስ ክትባቶች በጤና ሰራተኛዎ ከተዘጋጁ በኋላ እዚህ ይታያሉ' : 'TD1–TD5 tetanus doses will appear here when scheduled by your health worker.',
       );
     }
 
@@ -301,12 +309,14 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                   DateTime.now().day,
                 )).inDays;
                 final countdown = days == 0
-                    ? 'today'
+                    ? (isAmharic ? 'ዛሬ' : 'today')
                     : days == 1
-                        ? 'tomorrow'
-                        : 'in $days days';
-                final label = nextAppt['label'] ?? 'TD dose';
-                return 'Upcoming: $label on ${DateFormat('dd/MM/yyyy').format(date)} ($countdown).';
+                        ? (isAmharic ? 'ነገ' : 'tomorrow')
+                        : (isAmharic ? 'በ$days ቀናት' : 'in $days days');
+                final label = nextAppt['label'] ?? (isAmharic ? 'TD ክትባት' : 'TD dose');
+                return isAmharic 
+                  ? 'የሚመጡ: $label በ${DateFormat('dd/MM/yyyy').format(date)} ($countdown) ነው' 
+                  : 'Upcoming: $label on ${DateFormat('dd/MM/yyyy').format(date)} ($countdown).';
               }(),
               icon: Icons.vaccines,
             ),
@@ -333,9 +343,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _miniStat('Completed', given, AppointmentTheme.administered),
-                _miniStat('Scheduled', scheduled, AppointmentTheme.scheduled),
-                _miniStat('Missed', missed, AppointmentTheme.missed),
+                _miniStat(isAmharic ? 'ተከናውኗል' : 'Completed', given, AppointmentTheme.administered),
+                _miniStat(isAmharic ? 'ተዘጋጅቷል' : 'Scheduled', scheduled, AppointmentTheme.scheduled),
+                _miniStat(isAmharic ? 'ተለፈው' : 'Missed', missed, AppointmentTheme.missed),
               ],
             ),
           ),
@@ -349,12 +359,12 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
     );
   }
 
-  Widget _buildChildVaccinesTab() {
+  Widget _buildChildVaccinesTab(bool isAmharic) {
     if (_children.isEmpty) {
       return _buildEmptyState(
         Icons.child_care_outlined,
-        'No children registered yet.',
-        'Child vaccination schedules appear after your baby is registered at a health facility.',
+        isAmharic ? 'ምንም ልጆች አልተመዘገቡም' : 'No children registered yet.',
+        isAmharic ? 'የልጅ ክትባት መርሃግብሮች ልጅዎ በጤና ተቋም ከተመዘገበ በኋላ ይታያሉ' : 'Child vaccination schedules appear after your baby is registered at a health facility.',
       );
     }
 
@@ -364,13 +374,13 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          ..._children.map((child) => _buildChildSection(child)),
+          ..._children.map((child) => _buildChildSection(child, isAmharic)),
         ],
       ),
     );
   }
 
-  Widget _buildChildSection(dynamic child) {
+  Widget _buildChildSection(dynamic child, bool isAmharic) {
     final childId = child['_id']?.toString() ?? '';
     final vaccines = _childVaccines[childId] ?? [];
     final administered =
@@ -392,8 +402,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
                 ? next['vaccineId']['name']
                 : 'vaccination';
             return ReminderBanner(
-              message:
-                  'Upcoming: $vName for ${child['name']} on ${DateFormat('MMM d').format(DateTime.parse(next['scheduledDate'].toString()))}.',
+              message: isAmharic 
+                ? 'የሚመጡ: ${child['name']} ለ $vName በ${DateFormat('MMM d').format(DateTime.parse(next['scheduledDate'].toString()))} ነው' 
+                : 'Upcoming: $vName for ${child['name']} on ${DateFormat('MMM d').format(DateTime.parse(next['scheduledDate'].toString()))}.',
               icon: Icons.child_care,
             );
           }),
@@ -406,9 +417,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
           missed: missed,
         ),
         if (vaccines.isEmpty)
-          _emptyChildVaccines()
+          _emptyChildVaccines(isAmharic)
         else ...[
-          _sectionTitle('Vaccination Records'),
+          _sectionTitle(isAmharic ? 'የክትባት መዝገቦች' : 'Vaccination Records'),
           ..._sortedVaccines(vaccines).map((record) {
             final name = record['vaccineId'] is Map
                 ? record['vaccineId']['name']?.toString() ?? 'vaccine'
@@ -464,11 +475,11 @@ class _AppointmentsScreenState extends State<AppointmentsScreen>
     );
   }
 
-  Widget _emptyChildVaccines() {
+  Widget _emptyChildVaccines(bool isAmharic) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Text(
-        'No vaccination records yet for this child.',
+        isAmharic ? 'ለዚህ ልጅ ምንም የክትባት መዝገቦች የሉም' : 'No vaccination records yet for this child.',
         style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
       ),
     );

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_translations.dart';
+import '../../../core/services/language_service.dart';
 import '../../../core/widgets/app_bar_widget.dart';
 import '../widgets/profile_header.dart';
 import '../services/profile_service.dart';
@@ -55,10 +58,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageService>();
+    
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBarWidget(
-        title: 'My Profile',
+        title: AppTranslations.get('my_profile', lang.isAmharic),
         actions: [
           Container(
             margin: const EdgeInsets.only(right: 8),
@@ -74,7 +79,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: Text(AppTranslations.get('loading', lang.isAmharic)))
           : RefreshIndicator(
               onRefresh: _loadProfile,
               child: SingleChildScrollView(
@@ -89,34 +94,34 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(height: 32),
                     _buildProfileSection(
                       context,
-                      'Personal Details',
+                      lang.isAmharic ? 'የግል ዝርዝሮች' : 'Personal Details',
                       [
-                        _buildProfileItem(Icons.person_outline, 'Full Name', _user?.name ?? 'N/A'),
-                        _buildProfileItem(Icons.email_outlined, 'Email Address', _user?.email ?? 'N/A'),
-                        _buildProfileItem(Icons.phone_outlined, 'Phone Number', _user?.phoneNumber ?? 'N/A'),
-                        _buildProfileItem(Icons.badge_outlined, 'User Role', _user?.role ?? 'N/A'),
+                        _buildProfileItem(Icons.person_outline, lang.isAmharic ? 'ሙሉ ስም' : 'Full Name', _user?.name ?? 'N/A'),
+                        _buildProfileItem(Icons.email_outlined, lang.isAmharic ? 'ኢሜይል አድራሻ' : 'Email Address', _user?.email ?? 'N/A'),
+                        _buildProfileItem(Icons.phone_outlined, lang.isAmharic ? 'ስልክ ቁጥር' : 'Phone Number', _user?.phoneNumber ?? 'N/A'),
+                        _buildProfileItem(Icons.badge_outlined, lang.isAmharic ? 'የተጠቃሚ ሚና' : 'User Role', _user?.role ?? 'N/A'),
                       ],
                     ),
                     const SizedBox(height: 20),
                     _buildProfileSection(
                       context,
-                      'Location Information',
+                      lang.isAmharic ? 'የቦታ መረጃ' : 'Location Information',
                       [
-                        _buildProfileItem(Icons.map_outlined, 'Region', _user?.regionId ?? 'N/A'),
-                        _buildProfileItem(Icons.location_city_outlined, 'Wereda', _user?.woredaId ?? 'N/A'),
+                        _buildProfileItem(Icons.map_outlined, lang.isAmharic ? 'ክልል' : 'Region', _user?.regionId ?? 'N/A'),
+                        _buildProfileItem(Icons.location_city_outlined, lang.isAmharic ? 'ወረዳ' : 'Wereda', _user?.woredaId ?? 'N/A'),
                       ],
                     ),
                     const SizedBox(height: 20),
                     _buildProfileSection(
                       context,
-                      'Account History',
+                      lang.isAmharic ? 'የመለያ ታሪክ' : 'Account History',
                       [
-                        _buildProfileItem(Icons.update, 'Last Updated', _formatDate(_user?.updatedAt)),
-                        _buildProfileItem(Icons.calendar_today_outlined, 'Joined Date', _formatDate(_user?.createdAt)),
+                        _buildProfileItem(Icons.update, lang.isAmharic ? 'በመጨረሻ የተሻሻለ' : 'Last Updated', _formatDate(_user?.updatedAt)),
+                        _buildProfileItem(Icons.calendar_today_outlined, lang.isAmharic ? 'የተቀላቀለበት ቀን' : 'Joined Date', _formatDate(_user?.createdAt)),
                       ],
                     ),
                     const SizedBox(height: 40),
-                    _buildLogoutButton(),
+                    _buildLogoutButton(lang.isAmharic),
                     const SizedBox(height: 20),
                   ],
                 ),
@@ -217,16 +222,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildLogoutButton() {
+  Widget _buildLogoutButton(bool isAmharic) {
     return Container(
       width: double.infinity,
       height: 56,
       child: OutlinedButton.icon(
         onPressed: _handleLogout,
         icon: const Icon(Icons.logout_rounded, size: 20),
-        label: const Text(
-          'Logout Account',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        label: Text(
+          isAmharic ? 'መለያውን ውጣ' : 'Logout Account',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.error,

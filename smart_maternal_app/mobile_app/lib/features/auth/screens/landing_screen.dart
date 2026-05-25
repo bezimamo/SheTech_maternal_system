@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
 import '../../../routes/app_routes.dart';
+import '../../../core/services/language_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Palette
@@ -64,15 +66,13 @@ class _LandingScreenState extends State<LandingScreen>
   late final Animation<double>  _pulseAnim;
   late final Animation<double>  _shimmerAnim;
 
-  bool _amharic = false;
-
   // ── Strings ─────────────────────────────────────────────────────────────────
-  String get _title    => _amharic ? 'ብልህ የእናቶች ጤና ስርዓት'  : 'Smart Maternal\nHealth System';
-  String get _subtitle => _amharic
+  String _title(bool amharic) => amharic ? 'ብልህ የእናቶች ጤና ስርዓት'  : 'Smart Maternal\nHealth System';
+  String _subtitle(bool amharic) => amharic
       ? 'ደህንነቱ የተጠበቀ እርግዝና እና የሕፃናት ጤና አጠባበቅ ድጋፍ'
       : 'Supporting mothers & babies through\nsafe pregnancy and child healthcare.';
-  String get _btnLabel => _amharic ? 'ወደ መለያዎ ይግቡ' : 'Sign In';
-  String get _footer   => _amharic ? 'የጤና ጉዞዎ እዚህ ይጀምራል 💖' : 'Your health journey starts here 💖';
+  String _btnLabel(bool amharic) => amharic ? 'ወደ መለያዎ ይግቡ' : 'Sign In';
+  String _footer(bool amharic) => amharic ? 'የጤና ጉዞዎ እዚህ ይጀምራል 💖' : 'Your health journey starts here 💖';
 
   @override
   void initState() {
@@ -117,6 +117,7 @@ class _LandingScreenState extends State<LandingScreen>
     final size   = MediaQuery.of(context).size;
     final top    = MediaQuery.of(context).padding.top;
     final bottom = MediaQuery.of(context).padding.bottom;
+    final lang = context.watch<LanguageService>();
 
     return Scaffold(
       backgroundColor: _P.bg,
@@ -167,7 +168,7 @@ class _LandingScreenState extends State<LandingScreen>
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   child: FadeTransition(
                     opacity: _fadeAnim,
-                    child: _buildHeader(),
+                    child: _buildHeader(lang),
                   ),
                 ),
                 
@@ -181,7 +182,7 @@ class _LandingScreenState extends State<LandingScreen>
                     opacity: _fadeAnim,
                     child: SlideTransition(
                       position: _slideAnim,
-                      child: _buildImageTitle(),
+                      child: _buildImageTitle(lang.isAmharic),
                     ),
                   ),
                 ),
@@ -195,7 +196,7 @@ class _LandingScreenState extends State<LandingScreen>
                     opacity: _fadeAnim,
                     child: SlideTransition(
                       position: _slideAnim,
-                      child: _buildBottomContent(bottom),
+                      child: _buildBottomContent(bottom, lang.isAmharic),
                     ),
                   ),
                 ),
@@ -208,7 +209,7 @@ class _LandingScreenState extends State<LandingScreen>
   }
 
   // ── Header bar ───────────────────────────────────────────────────────────────
-  Widget _buildHeader() {
+  Widget _buildHeader(LanguageService lang) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -247,7 +248,7 @@ class _LandingScreenState extends State<LandingScreen>
 
         // Language toggle
         GestureDetector(
-          onTap: () => setState(() => _amharic = !_amharic),
+          onTap: () => lang.toggleLanguage(),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
@@ -258,12 +259,12 @@ class _LandingScreenState extends State<LandingScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _langChip('EN',  !_amharic),
+                _langChip('EN',  !lang.isAmharic),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 6),
                   child: Text('·', style: TextStyle(color: Colors.white54, fontSize: 14)),
                 ),
-                _langChip('አማ', _amharic),
+                _langChip('አማ', lang.isAmharic),
               ],
             ),
           ),
@@ -282,7 +283,7 @@ class _LandingScreenState extends State<LandingScreen>
   );
 
   // ── Title over image ─────────────────────────────────────────────────────────
-  Widget _buildImageTitle() {
+  Widget _buildImageTitle(bool amharic) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -300,7 +301,7 @@ class _LandingScreenState extends State<LandingScreen>
               const Icon(Icons.verified_rounded, color: Colors.white, size: 14),
               const SizedBox(width: 6),
               Text(
-                _amharic ? 'ኦፊሴላዊ ስርዓት' : 'Official Health System',
+                amharic ? 'ኦፊሴላዊ ስርዓት' : 'Official Health System',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 12,
@@ -312,7 +313,7 @@ class _LandingScreenState extends State<LandingScreen>
         ),
         const SizedBox(height: 14),
         Text(
-          _title,
+          _title(amharic),
           style: const TextStyle(
             color: Colors.white,
             fontSize: 36,
@@ -323,7 +324,7 @@ class _LandingScreenState extends State<LandingScreen>
         ),
         const SizedBox(height: 12),
         Text(
-          _subtitle,
+          _subtitle(amharic),
           style: TextStyle(
             color: Colors.white.withOpacity(0.9),
             fontSize: 15,
@@ -335,7 +336,7 @@ class _LandingScreenState extends State<LandingScreen>
   }
 
   // ── Bottom content ────────────────────────────────────────────────────────────
-  Widget _buildBottomContent(double bottomPadding) {
+  Widget _buildBottomContent(double bottomPadding, bool amharic) {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
@@ -359,12 +360,12 @@ class _LandingScreenState extends State<LandingScreen>
             children: [
 
               // ── Stats row ─────────────────────────────────────────────────
-              _buildStatsRow(),
+              _buildStatsRow(amharic),
               const SizedBox(height: 32),
 
               // ── Section label ─────────────────────────────────────────────
               Text(
-                _amharic ? 'ዋና ባህሪያት' : 'Key Features',
+                amharic ? 'ዋና ባህሪያት' : 'Key Features',
                 style: const TextStyle(
                   color: _P.textDark,
                   fontSize: 18,
@@ -374,17 +375,17 @@ class _LandingScreenState extends State<LandingScreen>
               const SizedBox(height: 16),
 
               // ── Feature grid ──────────────────────────────────────────────
-              _buildFeatureGrid(),
+              _buildFeatureGrid(amharic),
               const SizedBox(height: 36),
 
               // ── Sign In button ────────────────────────────────────────────
-              _buildSignInButton(),
+              _buildSignInButton(amharic),
               const SizedBox(height: 20),
 
               // ── Footer ───────────────────────────────────────────────────
               Center(
                 child: Text(
-                  _footer,
+                  _footer(amharic),
                   style: TextStyle(
                     color: _P.textSoft,
                     fontSize: 14,
@@ -400,8 +401,8 @@ class _LandingScreenState extends State<LandingScreen>
   }
 
   // ── Stats row ─────────────────────────────────────────────────────────────────
-  Widget _buildStatsRow() {
-    final List<_Stat> stats = _amharic
+  Widget _buildStatsRow(bool amharic) {
+    final List<_Stat> stats = amharic
         ? [const _Stat('10K+', 'እናቶች', _P.pink), const _Stat('98%', 'ደህንነት', _P.green), const _Stat('24/7', 'ድጋፍ', _P.blue)]
         : [const _Stat('10K+', 'Mothers', _P.pink), const _Stat('98%', 'Safe Births', _P.green), const _Stat('24/7', 'Support', _P.blue)];
 
@@ -413,11 +414,11 @@ class _LandingScreenState extends State<LandingScreen>
         return Expanded(
           child: _PressableCard(
             child: Container(
-              margin: EdgeInsets.only(right: isLast ? 0 : 14),
-              padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 12),
+              margin: EdgeInsets.only(right: isLast ? 0 : 12),
+              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.08),
@@ -432,7 +433,7 @@ class _LandingScreenState extends State<LandingScreen>
                     stat.value,
                     style: TextStyle(
                       color: stat.color,
-                      fontSize: 24,
+                      fontSize: 20,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -441,7 +442,7 @@ class _LandingScreenState extends State<LandingScreen>
                     stat.label,
                     style: const TextStyle(
                       color: _P.textSoft,
-                      fontSize: 12,
+                      fontSize: 11,
                     ),
                   ),
                 ],
@@ -454,8 +455,8 @@ class _LandingScreenState extends State<LandingScreen>
   }
 
   // ── Feature grid ──────────────────────────────────────────────────────────────
-  Widget _buildFeatureGrid() {
-    final List<_Feat> features = _amharic
+  Widget _buildFeatureGrid(bool amharic) {
+    final List<_Feat> features = amharic
         ? [
             const _Feat(Icons.calendar_month_rounded, 'ቀጠሮ ክትትል',    'ሁሉም ቀጠሮዎችዎን ይከታተሉ',          _P.blue),
             const _Feat(Icons.vaccines_rounded,        'ክትባት ማሳወቂያ',  'ለልጅዎ ክትባቶች ማሳወቂያ ያግኙ',       _P.green),
@@ -473,15 +474,15 @@ class _LandingScreenState extends State<LandingScreen>
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 14,
-      mainAxisSpacing: 14,
-      childAspectRatio: 1.45,
+      crossAxisSpacing: 12,
+      mainAxisSpacing: 12,
+      childAspectRatio: 1.2,
       children: features.map((f) => _PressableCard(child: _FeatureCard(feat: f))).toList(),
     );
   }
 
   // ── Sign In button ────────────────────────────────────────────────────────────
-  Widget _buildSignInButton() {
+  Widget _buildSignInButton(bool amharic) {
     return AnimatedBuilder(
       animation: _pulseAnim,
       builder: (_, child) => Transform.scale(scale: _pulseAnim.value, child: child),
@@ -529,13 +530,17 @@ class _LandingScreenState extends State<LandingScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text(
-                      _btnLabel,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+                    Flexible(
+                      child: Text(
+                        _btnLabel(amharic),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                        textAlign: TextAlign.center,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -624,10 +629,10 @@ class _FeatureCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -641,33 +646,39 @@ class _FeatureCard extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: feat.color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(feat.icon, color: feat.color, size: 26),
+            child: Icon(feat.icon, color: feat.color, size: 22),
           ),
-          const SizedBox(height: 12),
-          Text(
-            feat.title,
-            style: const TextStyle(
-              color: _P.textDark,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              height: 1.2,
+          const SizedBox(height: 10),
+          Flexible(
+            child: Text(
+              feat.title,
+              style: const TextStyle(
+                color: _P.textDark,
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+                height: 1.2,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
           const SizedBox(height: 4),
-          Text(
-            feat.desc,
-            style: const TextStyle(
-              color: _P.textSoft,
-              fontSize: 11,
-              height: 1.4,
+          Flexible(
+            child: Text(
+              feat.desc,
+              style: const TextStyle(
+                color: _P.textSoft,
+                fontSize: 10,
+                height: 1.4,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
