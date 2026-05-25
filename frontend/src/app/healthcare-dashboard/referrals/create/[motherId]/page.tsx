@@ -20,11 +20,13 @@ interface ReferralFormData {
 
 export default function CreateReferral() {
   const { user, logout, isLoading: authLoading } = useAuth();
+  const userRole = user?.role;
   const router = useRouter();
   const params = useParams();
   const searchParams = useSearchParams();
   const motherId = params.motherId as string;
   const referralId = searchParams?.get('referralId');
+  const [existingTargetHospitalId, setExistingTargetHospitalId] = useState<string>('');
   const [formData, setFormData] = useState<ReferralFormData>({
     motherId: motherId || '',
     pregnancyId: '',
@@ -108,6 +110,14 @@ export default function CreateReferral() {
         return;
       }
 
+      if (referral.toHospital) {
+        const hid = referral.toHospital._id || referral.toHospital;
+        setExistingTargetHospitalId(hid);
+        if (userRole !== 'LIAISON_OFFICER') {
+          setFormData((prev) => ({ ...prev, targetHospitalId: hid }));
+        }
+      }
+
       const selectedMotherId = referral.motherId?._id ?? referral.motherId;
       setIsEditMode(true);
       setFormData(prev => ({
@@ -120,7 +130,6 @@ export default function CreateReferral() {
             : referral.urgency === 'URGENT'
             ? 'HIGH'
             : 'MEDIUM',
-        targetHospitalId: referral.toHospital?._id ?? referral.toHospital ?? '',
         notes: referral.clinicalNotes ?? '',
         emergency: referral.urgency === 'EMERGENCY',
       }));
@@ -227,10 +236,25 @@ export default function CreateReferral() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.motherId || !formData.reason) {
-      setError('Please fill in all required fields');
-      return;
-    }
+      // Validation: ensure required fields
+      if (!formData.motherId || !formData.reason) {
+        setError('Please fill in all required fields (mother and reason).');
+        return;
+      }
+      // For non‑liaison officers, enforce destination facility selection
+      if (userRole !== 'LIAISON_OFFICER') {
+        if (!formData.targetHospitalId) {
+          setError('Please select a destination facility.');
+          return;
+        }
+      } else {
+        // Liaison officer: if a destination was already set on an existing draft
+        // and the liaison hasn't chosen a different one, keep the original.
+        if (!formData.targetHospitalId && existingTargetHospitalId) {
+          formData.targetHospitalId = existingTargetHospitalId;
+        }
+      }
+
 
     try {
       setSubmitting(true);
@@ -270,6 +294,10 @@ export default function CreateReferral() {
         urgency: urgencyMap[formData.priority] ?? 'ROUTINE',
         reasonForReferral: formData.reason,
         clinicalNotes: formData.notes || undefined,
+        // Destination is set by the creator; liaison sends using this value
+        ...(formData.targetHospitalId || existingTargetHospitalId
+          ? { toHospital: formData.targetHospitalId || existingTargetHospitalId }
+          : {}),
       };
 
       console.log('Sending referral data:', referralData);
@@ -559,6 +587,25 @@ export default function CreateReferral() {
                   <option value="URGENT">Urgent</option>
                 </select>
               </div>
+            </div>
+            
+            {/* Destination Facility */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Destination Facility {userRole !== 'LIAISON_OFFICER' ? '*' : <span className="text-gray-400 font-normal">(Optional — can be set when sending)</span>}
+              </label>
+              <select
+                name="targetHospitalId"
+                value={formData.targetHospitalId}
+                onChange={handleInputChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                required={userRole !== 'LIAISON_OFFICER'}
+              >
+                <option value="">Select Destination Facility…</option>
+                {hospitals.map((h: any) => (
+                  <option key={h._id} value={h._id}>{h.name} ({h.type === 'HEALTH_CENTER' ? 'Health Center' : 'Hospital'})</option>
+                ))}
+              </select>
             </div>
 
             {/* Additional Information */}

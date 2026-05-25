@@ -26,19 +26,17 @@ export class CreateChildDto {
   @IsMongoId()
   deliveredBy: string;
 
-  @ApiPropertyOptional({ example: 3200, description: 'Birth weight in grams' })
-  @IsOptional()
+  @ApiProperty({ example: 3200, description: 'Birth weight in grams' })
   @IsNumber()
   @Min(500)
   @Max(6000)
-  birthWeight?: number;
+  birthWeight: number;
 
-  @ApiPropertyOptional({ example: 50, description: 'Birth height in cm' })
-  @IsOptional()
+  @ApiProperty({ example: 50, description: 'Birth height in cm' })
   @IsNumber()
   @Min(30)
   @Max(80)
-  birthHeight?: number;
+  birthHeight: number;
 
   @ApiPropertyOptional({ example: 9, description: 'APGAR score' })
   @IsOptional()

@@ -29,7 +29,7 @@ export default function SystemDashboardUsers() {
               <div className="flex items-center space-x-4">
                 <span className="text-sm text-gray-700">Welcome, {user?.name}</span>
                 <button
-                  onClick={logout}
+                  onClick={() => logout()}
                   className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors duration-200"
                 >
                   Logout

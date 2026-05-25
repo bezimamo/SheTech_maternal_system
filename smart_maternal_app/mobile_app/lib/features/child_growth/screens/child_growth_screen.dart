@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_translations.dart';
+import '../../../core/services/language_service.dart';
 import '../widgets/growth_chart.dart';
 import '../services/child_service.dart';
 import '../services/growth_service.dart';

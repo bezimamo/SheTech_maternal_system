@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_translations.dart';
 import '../../../core/constants/app_text_styles.dart';
+import '../../../core/services/language_service.dart';
 import '../widgets/quick_action_card.dart';
 import '../../../routes/app_routes.dart';
 import '../../../models/user_model.dart';
@@ -40,29 +43,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final lang = context.watch<LanguageService>();
+    
     return Scaffold(
       backgroundColor: const Color(0xFFFBFBFB),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(child: Text(AppTranslations.get('loading', lang.isAmharic)))
           : RefreshIndicator(
               onRefresh: _loadProfile,
               displacement: 60,
               child: CustomScrollView(
                 slivers: [
-                  _buildSliverHero(),
+                  _buildSliverHero(lang.isAmharic),
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(24, 32, 24, 40),
                     sliver: SliverList(
                       delegate: SliverChildListDelegate([
-                        _buildSectionHeader('Your Journey'),
+                        _buildSectionHeader(AppTranslations.get('your_journey', lang.isAmharic)),
                         const SizedBox(height: 20),
-                        _buildProgressTrackingCard(),
+                        _buildProgressTrackingCard(lang.isAmharic),
                         const SizedBox(height: 32),
-                        _buildSectionHeader('Quick Actions'),
+                        _buildSectionHeader(AppTranslations.get('quick_actions', lang.isAmharic)),
                         const SizedBox(height: 20),
-                        _buildQuickActionsGrid(),
+                        _buildQuickActionsGrid(lang.isAmharic),
                         const SizedBox(height: 32),
-                        _buildHealthTipCard(),
+                        _buildHealthTipCard(lang.isAmharic),
                       ]),
                     ),
                   ),
@@ -72,7 +77,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildSliverHero() {
+  Widget _buildSliverHero(bool isAmharic) {
     final name = _user?.name ?? 'Mama';
     
     return SliverAppBar(
@@ -112,7 +117,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Hello,',
+                    AppTranslations.get('hello', isAmharic),
                     style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 18, fontWeight: FontWeight.w400),
                   ),
                   Text(
@@ -138,7 +143,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         const Icon(Icons.verified, color: Colors.white, size: 14),
                         const SizedBox(width: 4),
                         Text(
-                          'Verified Mother Profile',
+                          AppTranslations.get('verified_mother_profile', isAmharic),
                           style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 11, fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -171,7 +176,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildProgressTrackingCard() {
+  Widget _buildProgressTrackingCard(bool isAmharic) {
     final week = _user?.pregnancyInfo?.currentWeek ?? 0;
     final nextVisit = _user?.pregnancyInfo?.nextAppointment;
     final dueDate = _user?.pregnancyInfo?.dueDate;
@@ -191,11 +196,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         children: [
           Row(
             children: [
-              _buildMetricItem('Week', '$week', Icons.pregnant_woman, Colors.purple),
+              _buildMetricItem(AppTranslations.get('week', isAmharic), '$week', Icons.pregnant_woman, Colors.purple),
               const Spacer(),
               _buildMetricItem(
-                'Due Date', 
-                dueDate != null ? DateFormat('MMM d').format(dueDate) : 'TBD', 
+                AppTranslations.get('due_date', isAmharic), 
+                dueDate != null ? DateFormat('MMM d').format(dueDate) : AppTranslations.get('tbd', isAmharic), 
                 Icons.child_care, 
                 Colors.orange
               ),
@@ -242,9 +247,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Next Appointment', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                     Text(
-                      nextVisit != null ? DateFormat('EEEE, MMMM d').format(nextVisit) : 'Schedule pending',
+                      AppTranslations.get('next_appointment', isAmharic), 
+                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)
+                    ),
+                    Text(
+                      nextVisit != null ? DateFormat('EEEE, MMMM d').format(nextVisit) : AppTranslations.get('schedule_pending', isAmharic),
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                     ),
                   ],
@@ -278,7 +286,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildQuickActionsGrid() {
+  Widget _buildQuickActionsGrid(bool isAmharic) {
     return GridView.count(
       crossAxisCount: 2,
       shrinkWrap: true,
@@ -287,12 +295,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       crossAxisSpacing: 16,
       childAspectRatio: 1.1,
       children: [
-        _buildActionCard(Icons.calendar_month_rounded, 'Appointments', Colors.blue, AppRoutes.appointments),
-        _buildActionCard(Icons.child_care_rounded, 'Child Growth', Colors.green, AppRoutes.childGrowth),
-        _buildActionCard(Icons.vaccines_rounded, 'Vaccinations', Colors.orange, AppRoutes.vaccination),
-        _buildActionCard(Icons.warning_amber_rounded, 'Danger Signs', Colors.red, AppRoutes.dangerSigns),
-        _buildActionCard(Icons.local_hospital_rounded, 'Referrals', Colors.purple, AppRoutes.referrals),
-        _buildActionCard(Icons.person_rounded, 'My Profile', Colors.brown, AppRoutes.profile),
+        _buildActionCard(Icons.calendar_month_rounded, AppTranslations.get('appointments', isAmharic), Colors.blue, AppRoutes.appointments),
+        _buildActionCard(Icons.child_care_rounded, AppTranslations.get('child_growth', isAmharic), Colors.green, AppRoutes.childGrowth),
+        _buildActionCard(Icons.vaccines_rounded, AppTranslations.get('vaccinations', isAmharic), Colors.orange, AppRoutes.vaccination),
+        _buildActionCard(Icons.warning_amber_rounded, AppTranslations.get('danger_signs', isAmharic), Colors.red, AppRoutes.dangerSigns),
+        _buildActionCard(Icons.local_hospital_rounded, AppTranslations.get('referrals', isAmharic), Colors.purple, AppRoutes.referrals),
+        _buildActionCard(Icons.person_rounded, AppTranslations.get('my_profile', isAmharic), Colors.brown, AppRoutes.profile),
       ],
     );
   }
@@ -321,9 +329,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               child: Icon(icon, color: color, size: 24),
             ),
             const Spacer(),
-            Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.text),
+            Flexible(
+              child: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.text),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
             ),
           ],
         ),
@@ -331,7 +343,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildHealthTipCard() {
+  Widget _buildHealthTipCard(bool isAmharic) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -347,17 +359,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.auto_awesome, color: AppColors.primary, size: 20),
-              SizedBox(width: 8),
-              Text('Mama Insight', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15)),
+              const Icon(Icons.auto_awesome, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                AppTranslations.get('mama_insight', isAmharic), 
+                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15)
+              ),
             ],
           ),
           const SizedBox(height: 16),
-          const Text(
-            'Your baby is now the size of a small melon! Keep nourishing your body with iron-rich foods like spinach and lean meats.',
-            style: TextStyle(color: AppColors.textSecondary, fontSize: 15, height: 1.6),
+          Text(
+            AppTranslations.get('health_tip_default', isAmharic),
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 15, height: 1.6),
           ),
         ],
       ),

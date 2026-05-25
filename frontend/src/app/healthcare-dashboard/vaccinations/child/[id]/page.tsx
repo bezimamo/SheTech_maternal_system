@@ -30,6 +30,11 @@ interface VaccinationRecord {
   notes?: string;
   followUpRequired: boolean;
   followUpDate?: string;
+  isCatchUp?: boolean;
+  originalScheduleDate?: string;
+  missReason?: string;
+  weightKg?: number;
+  ageDays?: number;
 }
 
 interface AdministerForm {
@@ -107,28 +112,40 @@ const getRecordBlockNumber = (code: string, doseNumber: number): number => {
   return 1; // Default fallback
 };
 
+// A dose counts as "resolved" (no longer blocking the next block) when it has been
+// administered, contraindicated, OR recorded as missed (catch-up will be handled separately).
+const isResolved = (status: string) =>
+  status === 'ADMINISTERED' || status === 'CONTRAINDICATED' || status === 'MISSED';
+
 const getBlockStatus = (blockNum: number, records: VaccinationRecord[]) => {
+  // For block 1, only count non-catch-up records so duplicate catch-ups don't inflate totals
   if (blockNum === 1) {
-    const blockRecords = records.filter(r => getRecordBlockNumber(r.vaccineId?.code, r.doseNumber) === 1);
+    const blockRecords = records.filter(
+      r => getRecordBlockNumber(r.vaccineId?.code, r.doseNumber) === 1 && !r.isCatchUp,
+    );
     if (blockRecords.length === 0) return 'READY';
-    const completed = blockRecords.filter(r => r.status === 'ADMINISTERED' || r.status === 'CONTRAINDICATED').length;
+    const completed = blockRecords.filter(r => isResolved(r.status)).length;
     return completed === blockRecords.length ? 'COMPLETED' : 'IN_PROGRESS';
   }
 
-  // Check if previous blocks are completed
+  // Check if previous blocks are all resolved (administered, contraindicated, or missed)
   for (let b = 1; b < blockNum; b++) {
-    const prevBlockRecords = records.filter(r => getRecordBlockNumber(r.vaccineId?.code, r.doseNumber) === b);
+    const prevBlockRecords = records.filter(
+      r => getRecordBlockNumber(r.vaccineId?.code, r.doseNumber) === b && !r.isCatchUp,
+    );
     if (prevBlockRecords.length === 0) continue;
-    const prevCompleted = prevBlockRecords.filter(r => r.status === 'ADMINISTERED' || r.status === 'CONTRAINDICATED').length;
-    if (prevCompleted < prevBlockRecords.length) {
+    const prevResolved = prevBlockRecords.filter(r => isResolved(r.status)).length;
+    if (prevResolved < prevBlockRecords.length) {
       return 'LOCKED';
     }
   }
 
-  // Check current block
-  const blockRecords = records.filter(r => getRecordBlockNumber(r.vaccineId?.code, r.doseNumber) === blockNum);
+  // Check current block (exclude catch-up records from progress count)
+  const blockRecords = records.filter(
+    r => getRecordBlockNumber(r.vaccineId?.code, r.doseNumber) === blockNum && !r.isCatchUp,
+  );
   if (blockRecords.length === 0) return 'READY';
-  const completed = blockRecords.filter(r => r.status === 'ADMINISTERED' || r.status === 'CONTRAINDICATED').length;
+  const completed = blockRecords.filter(r => isResolved(r.status)).length;
   if (completed === blockRecords.length) return 'COMPLETED';
   if (completed > 0) return 'IN_PROGRESS';
   return 'READY';
@@ -381,6 +398,7 @@ export default function ChildVaccinations() {
         administeredDate: new Date().toISOString().split('T')[0],
         nextScheduledDate: '', batchNumber: '', manufacturer: '',
         injectionSite: 'Left Thigh', notes: '', status: 'ADMINISTERED',
+        weightKg: '', ageDays: '',
       });
       await fetchData();
     } catch (err: any) {
@@ -505,11 +523,14 @@ export default function ChildVaccinations() {
         <div className="space-y-8">
           <h2 className="text-2xl font-bold text-gray-900">Infant Immunization Milestone Blocks</h2>
           {VACCINE_BLOCKS.map(block => {
-            const blockRecords = vaccinationRecords.filter(r => getRecordBlockNumber(r.vaccineId?.code, r.doseNumber) === block.number);
+            // Exclude catch-up records from block display totals — they are supplementary
+            const blockRecords = vaccinationRecords.filter(
+              r => getRecordBlockNumber(r.vaccineId?.code, r.doseNumber) === block.number && !r.isCatchUp,
+            );
             const blockStatus = getBlockStatus(block.number, vaccinationRecords);
             
-            // Calculate progress percentage
-            const completedCount = blockRecords.filter(r => r.status === 'ADMINISTERED' || r.status === 'CONTRAINDICATED').length;
+            // Calculate progress percentage — resolved = administered, contraindicated, or missed
+            const completedCount = blockRecords.filter(r => isResolved(r.status)).length;
             const totalCount = blockRecords.length;
             const percent = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
             

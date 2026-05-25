@@ -290,11 +290,13 @@ export class VaccinationsController {
   @ApiResponse({ status: 404, description: 'Vaccination record not found' })
   async markVaccinationMissed(@Param('id') id: string, @Body() missData: { missReason: string }, @Request() req) {
     const user = req.user;
+    const facilityId = user.facilityId ?? user.hospitalId;
     return this.vaccinationsService.markVaccinationMissed(
       id,
       missData.missReason,
       user.role,
-      user.hospitalId?.toString()
+      facilityId?.toString(),
+      user._id?.toString() ?? user.userId?.toString(),
     );
   }
 

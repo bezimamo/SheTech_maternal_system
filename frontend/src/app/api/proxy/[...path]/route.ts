@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from "next/server"
 
-const BACKEND_BASE = process.env.BACKEND_BASE_URL || 
-  (process.env.API_URL ? (process.env.API_URL.endsWith('/api') ? process.env.API_URL : `${process.env.API_URL}/api`) : "http://127.0.0.1:3001/api");
+function resolveBackendBase(): string {
+  if (process.env.BACKEND_BASE_URL) {
+    const base = process.env.BACKEND_BASE_URL.replace(/\/$/, "")
+    return base.endsWith("/api") ? base : `${base}/api`
+  }
+  const raw = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL
+  if (raw) {
+    const base = raw.replace(/\/$/, "")
+    return base.endsWith("/api") ? base : `${base}/api`
+  }
+  return "http://127.0.0.1:3001/api"
+}
+
+const BACKEND_BASE = resolveBackendBase()
 const COOKIE_NAME = "sms_token"
 
 export const dynamic = "force-dynamic"
@@ -85,13 +97,23 @@ async function handler(
       const code = error?.cause?.code ?? error?.code
       // If we failed to reach the configured URL and we are in development, 
       // try falling back to 127.0.0.1 as a last resort.
-      if (code === "ECONNREFUSED" && !targetUrl.includes("127.0.0.1") && !targetUrl.includes("localhost")) {
-        const fallbackUrl = targetUrl.replace(/https?:\/\/[^\/]+/, "http://127.0.0.1:3001")
-        console.warn(`[PROXY] ⚠️ Connection refused to ${targetUrl}. Falling back to local: ${fallbackUrl}`)
-        upstream = await performFetch(fallbackUrl)
-      } else {
-        throw error
+      const fallbacks = [
+        targetUrl.replace(/https?:\/\/[^/]+/, "http://127.0.0.1:3001"),
+        targetUrl.replace(/https?:\/\/[^/]+/, "http://localhost:3001"),
+      ]
+      let lastErr = error
+      for (const fallbackUrl of fallbacks) {
+        if (fallbackUrl === targetUrl) continue
+        try {
+          console.warn(`[PROXY] Connection refused to ${targetUrl}. Trying ${fallbackUrl}`)
+          upstream = await performFetch(fallbackUrl)
+          lastErr = null
+          break
+        } catch (e) {
+          lastErr = e
+        }
       }
+      if (lastErr) throw lastErr
     }
 
     if (process.env.NODE_ENV === "development") {
@@ -112,10 +134,13 @@ async function handler(
     
     const message =
       code === "ECONNREFUSED" || code === "ETIMEDOUT"
-        ? "Backend service is unavailable"
-        : `Failed to reach backend service (${code || 'Unknown error'})`
-        
-    return NextResponse.json({ message, code }, { status: 502 })
+        ? "Backend service is unavailable. Start the API with: cd backend && npm run start:dev"
+        : `Failed to reach backend service (${code || "Unknown error"})`
+
+    return NextResponse.json(
+      { message, code, backend: BACKEND_BASE },
+      { status: 502 },
+    )
   }
 }
 

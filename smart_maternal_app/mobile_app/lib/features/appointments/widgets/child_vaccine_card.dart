@@ -97,29 +97,38 @@ class ChildVaccineCard extends StatelessWidget {
             Row(
               children: [
                 if (status == 'SCHEDULED') ...[
-                  _actionButton(
-                    context,
-                    label: 'Administer',
-                    icon: Icons.check_circle_outline,
-                    color: AppointmentTheme.administered,
-                    onTap: onViewDetails,
+                  Flexible(
+                    child: _actionButton(
+                      context,
+                      label: 'Administer',
+                      icon: Icons.check_circle_outline,
+                      color: AppointmentTheme.administered,
+                      onTap: onViewDetails,
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  _actionButton(
-                    context,
-                    label: 'Mark Missed',
-                    icon: Icons.cancel_outlined,
-                    color: AppointmentTheme.missed,
-                    onTap: onViewDetails,
+                  Flexible(
+                    child: _actionButton(
+                      context,
+                      label: 'Mark Missed',
+                      icon: Icons.cancel_outlined,
+                      color: AppointmentTheme.missed,
+                      onTap: onViewDetails,
+                    ),
                   ),
+                  const SizedBox(width: 8),
                 ],
-                const Spacer(),
-                TextButton.icon(
-                  onPressed: onRemind,
-                  icon: const Icon(Icons.alarm, size: 16),
-                  label: const Text('Remind Me'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppointmentTheme.brown,
+                Flexible(
+                  child: TextButton.icon(
+                    onPressed: onRemind,
+                    icon: const Icon(Icons.alarm, size: 16),
+                    label: const Text('Remind Me'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppointmentTheme.brown,
+                      padding: EdgeInsets.zero,
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                   ),
                 ),
               ],

@@ -87,6 +87,12 @@ export default function ReferralManagement() {
 
   const handleSendReferral = async (referralId: string, targetHospitalId: string, liaisonNote?: string) => {
     try {
+      // Find the referral in the current data to verify stored targetHospitalId
+      const referral = [...incomingReferralsData, ...sentReferralsData].find((r) => r._id === referralId);
+      if (referral && referral.targetHospitalId && referral.targetHospitalId !== targetHospitalId) {
+        setError('Destination hospital mismatch: liaison selection does not match referral creator’s chosen facility.');
+        return;
+      }
       await referralsApi.send(referralId, targetHospitalId, liaisonNote);
       await fetchReferrals(); // Refresh data
     } catch (err: any) {
@@ -228,7 +234,7 @@ export default function ReferralManagement() {
                 Create Referral
               </button>
               <button
-                onClick={logout}
+                onClick={() => logout()}
                 className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
               >
                 Logout

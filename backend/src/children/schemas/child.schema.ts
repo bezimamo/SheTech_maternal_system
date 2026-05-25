@@ -23,10 +23,10 @@ export class Child {
   @Prop({ required: true, type: Types.ObjectId, ref: 'User' })
   deliveredBy: Types.ObjectId;
 
-  @Prop()
+  @Prop({ required: true })
   birthWeight?: number; // in grams
 
-  @Prop()
+  @Prop({ required: true })
   birthHeight?: number; // in cm
 
   @Prop()
