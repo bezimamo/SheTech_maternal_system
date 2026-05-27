@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 
 class ApiConstants {
-  // Use localhost for web, 10.0.2.2 for emulator, or host IP for physical device
+  // Use localhost for web, 10.0.2.2 for emulator, or your computer's IP for physical device
+  static const String computerIp = '10.161.125.249'; // Your computer's actual IP!
+
   static const String baseUrl = kIsWeb 
       ? 'http://localhost:3001/api'
-      : 'http://10.0.2.2:3001/api';
+      : 'http://$computerIp:3001/api';
   
   static const String authEndpoint = '/auth';
   static const String loginEndpoint = '/auth/login';

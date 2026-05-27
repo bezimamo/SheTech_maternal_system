@@ -1,8 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_translations.dart';
-import '../../../core/services/language_service.dart';
 import '../widgets/growth_chart.dart';
 import '../services/child_service.dart';
 import '../services/growth_service.dart';
@@ -170,7 +167,7 @@ class _ChildGrowthScreenState extends State<ChildGrowthScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FA),
+      backgroundColor: AppColors.background,
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : _children.isEmpty
@@ -236,11 +233,12 @@ class _ChildGrowthScreenState extends State<ChildGrowthScreen>
     final isBoy = gender.toString().toUpperCase() == 'MALE';
 
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            isBoy ? const Color(0xFF1565C0) : AppColors.primary,
-            isBoy ? const Color(0xFF42A5F5) : const Color(0xFFF48FB1),
+            Color(0xFF4E342E),
+            Color(0xFF6D4C41),
+            Color(0xFF8D6E63),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -291,50 +289,63 @@ class _ChildGrowthScreenState extends State<ChildGrowthScreen>
                 ),
                 const SizedBox(height: 16),
               ],
-              // Child info
+              // Child info with baby image
               Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Baby image placeholder
                   Container(
-                    width: 64,
-                    height: 64,
+                    width: 90,
+                    height: 90,
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.white.withOpacity(0.4), width: 2),
                     ),
-                    child: Center(
-                      child: Text(
-                        name.isNotEmpty ? name[0].toUpperCase() : '?',
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/9_month_baby.jpg',
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return Center(
+                            child: Text(
+                              name.isNotEmpty ? name[0].toUpperCase() : '?',
+                              style: const TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
+                            ),
+                          );
+                        },
                       ),
                     ),
                   ),
                   const SizedBox(width: 16),
                   Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          style: const TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            _headerChip(isBoy ? '👦 Boy' : '👧 Girl'),
-                            const SizedBox(width: 8),
-                            _headerChip('🎂 $age'),
-                          ],
-                        ),
-                      ],
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              _headerChip(isBoy ? '👦 Boy' : '👧 Girl'),
+                              const SizedBox(width: 8),
+                              _headerChip('🎂 $age'),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -847,7 +858,7 @@ class _ChildGrowthScreenState extends State<ChildGrowthScreen>
   // ── Empty state ─────────────────────────────────────────────────────────────
   Widget _buildEmpty() {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6FA),
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.primary,
         title: const Text('Child Growth', style: TextStyle(color: Colors.white)),

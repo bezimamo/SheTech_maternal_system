@@ -5,73 +5,60 @@ import '../../../routes/app_routes.dart';
 import '../../../core/services/language_service.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Palette
+// Color Palette (Psychologically warm, safe, and professional)
 // ─────────────────────────────────────────────────────────────────────────────
 class _P {
-  static const bg          = Color(0xFFFFF8F5);   // warm cream background
-  static const brownDeep   = Color(0xFF4E342E);
-  static const brownRich   = Color(0xFF6D4C41);
-  static const brownWarm   = Color(0xFF8D6E63);
-  static const brownLight  = Color(0xFFD7CCC8);
-  static const gold        = Color(0xFFFFB74D);
-  static const green       = Color(0xFF66BB6A);
-  static const blue        = Color(0xFF42A5F5);
-  static const red         = Color(0xFFEF5350);
-  static const pink        = Color(0xFFE91E63);
-  static const textDark    = Color(0xFF3E2723);
-  static const textMid     = Color(0xFF6D4C41);
-  static const textSoft    = Color(0xFF8D6E63);
+  static const bg          = Color(0xFFF8F5F2);   // warm light cream background
+  static const brownDeep   = Color(0xFF4E342E);   // dark stable brown
+  static const brownRich   = Color(0xFF6D4C41);   // rich brown
+  static const brownWarm   = Color(0xFF8D6E63);   // primary brown
+  static const brownLight  = Color(0xFFD7CCC8);   // soft beige
+  static const gold        = Color(0xFFFFB74D);   // soft orange accent
+  static const green       = Color(0xFF81C784);   // soft green accent
+  static const blue        = Color(0xFF64B5F6);   // soft blue accent
+  static const red         = Color(0xFFE57373);   // soft red accent
+  static const textDark    = Color(0xFF3E2723);   // deep contrast text
+  static const textMid     = Color(0xFF6D4C41);   // secondary text
+  static const textSoft    = Color(0xFF8D6E63);   // caption/hint text
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Stats data class
-// ─────────────────────────────────────────────────────────────────────────────
-class _Stat {
-  final String value;
-  final String label;
-  final Color color;
-  const _Stat(this.value, this.label, this.color);
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Feature data
+// Feature data structure
 // ─────────────────────────────────────────────────────────────────────────────
 class _Feat {
   final IconData icon;
-  final String   title;
-  final String   desc;
-  final Color    color;
+  final String title;
+  final String desc;
+  final Color color;
   const _Feat(this.icon, this.title, this.desc, this.color);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Landing screen
+// Landing Screen
 // ─────────────────────────────────────────────────────────────────────────────
 class LandingScreen extends StatefulWidget {
   const LandingScreen({super.key});
+
   @override
   State<LandingScreen> createState() => _LandingScreenState();
 }
 
-class _LandingScreenState extends State<LandingScreen>
-    with TickerProviderStateMixin {
-
+class _LandingScreenState extends State<LandingScreen> with TickerProviderStateMixin {
   late final AnimationController _entryCtrl;
   late final AnimationController _pulseCtrl;
   late final AnimationController _shimmerCtrl;
 
-  late final Animation<double>  _fadeAnim;
-  late final Animation<Offset>  _slideAnim;
-  late final Animation<double>  _imgScaleAnim;
-  late final Animation<double>  _pulseAnim;
-  late final Animation<double>  _shimmerAnim;
+  late final Animation<double> _fadeAnim;
+  late final Animation<Offset> _slideAnim;
+  late final Animation<double> _pulseAnim;
+  late final Animation<double> _shimmerAnim;
 
   // ── Strings ─────────────────────────────────────────────────────────────────
-  String _title(bool amharic) => amharic ? 'ብልህ የእናቶች ጤና ስርዓት'  : 'Smart Maternal\nHealth System';
+  String _title(bool amharic) => amharic ? 'ብልህ የእናቶች ጤና ስርዓት' : 'Smart Maternal\nHealth System';
   String _subtitle(bool amharic) => amharic
       ? 'ደህንነቱ የተጠበቀ እርግዝና እና የሕፃናት ጤና አጠባበቅ ድጋፍ'
-      : 'Supporting mothers & babies through\nsafe pregnancy and child healthcare.';
-  String _btnLabel(bool amharic) => amharic ? 'ወደ መለያዎ ይግቡ' : 'Sign In';
+      : 'Supporting mothers & babies through safe pregnancy and child healthcare.';
+  String _btnLabel(bool amharic) => amharic ? 'ወደ መለያዎ ይግቡ' : 'Sign In to Continue';
   String _footer(bool amharic) => amharic ? 'የጤና ጉዞዎ እዚህ ይጀምራል 💖' : 'Your health journey starts here 💖';
 
   @override
@@ -79,24 +66,17 @@ class _LandingScreenState extends State<LandingScreen>
     super.initState();
     SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
+      statusBarIconBrightness: Brightness.dark,
     ));
 
-    _entryCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
-    _pulseCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2200))
-      ..repeat(reverse: true);
-    _shimmerCtrl = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2600))
-      ..repeat();
+    _entryCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 1000));
+    _pulseCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2000))..repeat(reverse: true);
+    _shimmerCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 2400))..repeat();
 
     _fadeAnim = CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.15), end: Offset.zero)
+    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.08), end: Offset.zero)
         .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
-    _imgScaleAnim = Tween<double>(begin: 1.1, end: 1.0)
-        .animate(CurvedAnimation(parent: _entryCtrl, curve: Curves.easeOutCubic));
-    _pulseAnim = Tween<double>(begin: 1.0, end: 1.04)
+    _pulseAnim = Tween<double>(begin: 1.0, end: 1.03)
         .animate(CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut));
     _shimmerAnim = Tween<double>(begin: -2.0, end: 3.0)
         .animate(CurvedAnimation(parent: _shimmerCtrl, curve: Curves.linear));
@@ -114,112 +94,101 @@ class _LandingScreenState extends State<LandingScreen>
 
   @override
   Widget build(BuildContext context) {
-    final size   = MediaQuery.of(context).size;
-    final top    = MediaQuery.of(context).padding.top;
-    final bottom = MediaQuery.of(context).padding.bottom;
+    final size = MediaQuery.of(context).size;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     final lang = context.watch<LanguageService>();
+    final amharic = lang.isAmharic;
 
     return Scaffold(
       backgroundColor: _P.bg,
-      body: Stack(
-        children: [
-          // ── Full screen hero image ───────────────────────────────────────
-          SizedBox(
-            height: size.height,
-            width: size.width,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                ScaleTransition(
-                  scale: _imgScaleAnim,
-                  child: Image.asset(
-                    'assets/images/pregnant_mother2.jpg',
-                    fit: BoxFit.cover,
-                    alignment: Alignment.center,
-                  ),
-                ),
-                // Gradient overlay for readability
-                DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      stops: const [0.0, 0.25, 0.55, 0.75, 0.95],
-                      colors: [
-                        Colors.black.withOpacity(0.15),
-                        Colors.black.withOpacity(0.25),
-                        Colors.black.withOpacity(0.45),
-                        Colors.black.withOpacity(0.75),
-                        _P.bg,
-                      ],
+      body: SafeArea(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: FadeTransition(
+            opacity: _fadeAnim,
+            child: SlideTransition(
+              position: _slideAnim,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // ── Header Bar ─────────────────────────────────────────────
+                  _buildHeader(lang),
+                  const SizedBox(height: 24),
+
+                  // ── Framed Portrait Illustration ───────────────────────────
+                  _buildIllustrationFrame(size),
+                  const SizedBox(height: 28),
+
+                  // ── Welcome & Copy text ────────────────────────────────────
+                  _buildWelcomeText(amharic),
+                  const SizedBox(height: 24),
+
+                  // ── Trust Statistics Card ──────────────────────────────────
+                  _buildStatsCard(amharic),
+                  const SizedBox(height: 28),
+
+                  // ── Section Title ──────────────────────────────────────────
+                  Text(
+                    amharic ? 'ዋና ባህሪያት' : 'Key Features',
+                    style: const TextStyle(
+                      color: _P.textDark,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 16),
+
+                  // ── Feature Row Cards (Spacious, Zero-Overflow Layout) ────
+                  _buildFeatureRows(amharic),
+                  const SizedBox(height: 36),
+
+                  // ── Primary Action Button ──────────────────────────────────
+                  _buildSignInButton(amharic),
+                  const SizedBox(height: 24),
+
+                  // ── Psychological Reassurance Footer ───────────────────────
+                  Center(
+                    child: Text(
+                      _footer(amharic),
+                      style: const TextStyle(
+                        color: _P.textSoft,
+                        fontSize: 14,
+                        fontStyle: FontStyle.italic,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: 16 + bottomPadding),
+                ],
+              ),
             ),
           ),
-          
-          // ── Content layer ─────────────────────────────────────────────────
-          SafeArea(
-            child: Column(
-              children: [
-                // ── Header bar ───────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  child: FadeTransition(
-                    opacity: _fadeAnim,
-                    child: _buildHeader(lang),
-                  ),
-                ),
-                
-                // ── Spacer ───────────────────────────────────────────────────
-                const Spacer(flex: 2),
-                
-                // ── Title section ────────────────────────────────────────────
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: FadeTransition(
-                    opacity: _fadeAnim,
-                    child: SlideTransition(
-                      position: _slideAnim,
-                      child: _buildImageTitle(lang.isAmharic),
-                    ),
-                  ),
-                ),
-                
-                const SizedBox(height: 32),
-                
-                // ── Bottom panel with stats and features ─────────────────────
-                Expanded(
-                  flex: 5,
-                  child: FadeTransition(
-                    opacity: _fadeAnim,
-                    child: SlideTransition(
-                      position: _slideAnim,
-                      child: _buildBottomContent(bottom, lang.isAmharic),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  // ── Header bar ───────────────────────────────────────────────────────────────
+  // ── Header Bar ─────────────────────────────────────────────────────────────
   Widget _buildHeader(LanguageService lang) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Logo
+        // App Identity Brand Logo
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.18),
+            color: Colors.white,
             borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: Colors.white.withOpacity(0.35)),
+            border: Border.all(color: _P.brownLight.withOpacity(0.4)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x063E2723),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -227,42 +196,49 @@ class _LandingScreenState extends State<LandingScreen>
               Container(
                 padding: const EdgeInsets.all(6),
                 decoration: const BoxDecoration(
-                  color: _P.pink,
+                  color: _P.brownWarm,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.favorite_rounded, color: Colors.white, size: 14),
+                child: const Icon(Icons.favorite_rounded, color: Colors.white, size: 12),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               const Text(
                 'SMHS',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: _P.textDark,
                   fontWeight: FontWeight.bold,
-                  fontSize: 15,
-                  letterSpacing: 2.2,
+                  fontSize: 14,
+                  letterSpacing: 2.0,
                 ),
               ),
             ],
           ),
         ),
 
-        // Language toggle
+        // Language Toggle Chip
         GestureDetector(
           onTap: () => lang.toggleLanguage(),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: Colors.white.withOpacity(0.35)),
+              border: Border.all(color: _P.brownLight.withOpacity(0.4)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x063E2723),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _langChip('EN',  !lang.isAmharic),
+                _langChip('EN', !lang.isAmharic),
                 const Padding(
                   padding: EdgeInsets.symmetric(horizontal: 6),
-                  child: Text('·', style: TextStyle(color: Colors.white54, fontSize: 14)),
+                  child: Text('·', style: TextStyle(color: _P.textSoft, fontSize: 14)),
                 ),
                 _langChip('አማ', lang.isAmharic),
               ],
@@ -274,36 +250,86 @@ class _LandingScreenState extends State<LandingScreen>
   }
 
   Widget _langChip(String label, bool active) => Text(
-    label,
-    style: TextStyle(
-      color: active ? Colors.white : Colors.white54,
-      fontWeight: active ? FontWeight.bold : FontWeight.normal,
-      fontSize: 13,
-    ),
-  );
+        label,
+        style: TextStyle(
+          color: active ? _P.textDark : _P.textSoft.withOpacity(0.5),
+          fontWeight: active ? FontWeight.bold : FontWeight.normal,
+          fontSize: 13,
+        ),
+      );
 
-  // ── Title over image ─────────────────────────────────────────────────────────
-  Widget _buildImageTitle(bool amharic) {
+  // ── Framed Portrait Illustration Card ──────────────────────────────────────
+  Widget _buildIllustrationFrame(Size size) {
+    return Container(
+      height: 260,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: Colors.white, width: 8),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C3E2723),
+            blurRadius: 20,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(22),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.asset(
+              'assets/images/ethiopian_mother_child.png',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+            // Soft warm gradient bottom fade for smooth look
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 60,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.white.withOpacity(0.0),
+                      Colors.white.withOpacity(0.4),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Welcome & Copy Text ────────────────────────────────────────────────────
+  Widget _buildWelcomeText(bool amharic) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
       children: [
-        // Pill tag
+        // Official Badge Tag
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: _P.pink.withOpacity(0.95),
-            borderRadius: BorderRadius.circular(24),
+            color: _P.brownWarm.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.verified_rounded, color: Colors.white, size: 14),
+              const Icon(Icons.verified_rounded, color: _P.brownRich, size: 14),
               const SizedBox(width: 6),
               Text(
-                amharic ? 'ኦፊሴላዊ ስርዓት' : 'Official Health System',
+                amharic ? 'ኦፊሴላዊ የጤና ስርዓት' : 'Official MOH System',
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: _P.brownRich,
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
                 ),
@@ -315,173 +341,167 @@ class _LandingScreenState extends State<LandingScreen>
         Text(
           _title(amharic),
           style: const TextStyle(
-            color: Colors.white,
-            fontSize: 36,
+            color: _P.textDark,
+            fontSize: 32,
             fontWeight: FontWeight.bold,
-            height: 1.15,
-            letterSpacing: -0.5,
+            height: 1.2,
+            letterSpacing: -0.8,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Text(
           _subtitle(amharic),
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.9),
+          style: const TextStyle(
+            color: _P.textMid,
             fontSize: 15,
-            height: 1.6,
+            height: 1.5,
           ),
         ),
       ],
     );
   }
 
-  // ── Bottom content ────────────────────────────────────────────────────────────
-  Widget _buildBottomContent(double bottomPadding, bool amharic) {
+  // ── Trust Statistics Card (Unified Compact Style) ──────────────────────────
+  Widget _buildStatsCard(bool amharic) {
+    final String labelMothers = amharic ? 'እናቶች' : 'Mothers';
+    final String labelBirths = amharic ? 'ደህንነት' : 'Safe Births';
+    final String labelSupport = amharic ? 'ድጋፍ' : 'Support';
+
     return Container(
-      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 16),
       decoration: BoxDecoration(
-        color: _P.bg,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
-        boxShadow: [
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.15),
-            blurRadius: 30,
-            offset: const Offset(0, -10),
+            color: Color(0x063E2723),
+            blurRadius: 15,
+            offset: Offset(0, 6),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(36)),
-        child: SingleChildScrollView(
-          physics: const BouncingScrollPhysics(),
-          padding: EdgeInsets.fromLTRB(24, 32, 24, 20 + bottomPadding),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-
-              // ── Stats row ─────────────────────────────────────────────────
-              _buildStatsRow(amharic),
-              const SizedBox(height: 32),
-
-              // ── Section label ─────────────────────────────────────────────
-              Text(
-                amharic ? 'ዋና ባህሪያት' : 'Key Features',
-                style: const TextStyle(
-                  color: _P.textDark,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // ── Feature grid ──────────────────────────────────────────────
-              _buildFeatureGrid(amharic),
-              const SizedBox(height: 36),
-
-              // ── Sign In button ────────────────────────────────────────────
-              _buildSignInButton(amharic),
-              const SizedBox(height: 20),
-
-              // ── Footer ───────────────────────────────────────────────────
-              Center(
-                child: Text(
-                  _footer(amharic),
-                  style: TextStyle(
-                    color: _P.textSoft,
-                    fontSize: 14,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      child: Row(
+        children: [
+          Expanded(child: _buildSingleStat('10K+', labelMothers, _P.brownWarm)),
+          _buildVerticalDivider(),
+          Expanded(child: _buildSingleStat('98%', labelBirths, _P.green)),
+          _buildVerticalDivider(),
+          Expanded(child: _buildSingleStat('24/7', labelSupport, _P.blue)),
+        ],
       ),
     );
   }
 
-  // ── Stats row ─────────────────────────────────────────────────────────────────
-  Widget _buildStatsRow(bool amharic) {
-    final List<_Stat> stats = amharic
-        ? [const _Stat('10K+', 'እናቶች', _P.pink), const _Stat('98%', 'ደህንነት', _P.green), const _Stat('24/7', 'ድጋፍ', _P.blue)]
-        : [const _Stat('10K+', 'Mothers', _P.pink), const _Stat('98%', 'Safe Births', _P.green), const _Stat('24/7', 'Support', _P.blue)];
-
-    return Row(
-      children: stats.asMap().entries.map((entry) {
-        final int index = entry.key;
-        final _Stat stat = entry.value;
-        final bool isLast = index == stats.length - 1;
-        return Expanded(
-          child: _PressableCard(
-            child: Container(
-              margin: EdgeInsets.only(right: isLast ? 0 : 12),
-              padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 16,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    stat.value,
-                    style: TextStyle(
-                      color: stat.color,
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    stat.label,
-                    style: const TextStyle(
-                      color: _P.textSoft,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+  Widget _buildSingleStat(String value, String label, Color color) {
+    return Column(
+      children: [
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.5,
           ),
-        );
-      }).toList(),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(
+            color: _P.textMid,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
-  // ── Feature grid ──────────────────────────────────────────────────────────────
-  Widget _buildFeatureGrid(bool amharic) {
+  Widget _buildVerticalDivider() {
+    return Container(
+      height: 32,
+      width: 1,
+      color: _P.brownLight.withOpacity(0.5),
+    );
+  }
+
+  // ── Feature Row Cards (Horizontal spacious rows preventing clipping) ───────
+  Widget _buildFeatureRows(bool amharic) {
     final List<_Feat> features = amharic
         ? [
-            const _Feat(Icons.calendar_month_rounded, 'ቀጠሮ ክትትል',    'ሁሉም ቀጠሮዎችዎን ይከታተሉ',          _P.blue),
-            const _Feat(Icons.vaccines_rounded,        'ክትባት ማሳወቂያ',  'ለልጅዎ ክትባቶች ማሳወቂያ ያግኙ',       _P.green),
-            const _Feat(Icons.emergency_rounded,       'አደጋ ጊዜ ድጋፍ', 'ፈጣን የጤና ድጋፍ ያግኙ',             _P.red),
-            const _Feat(Icons.child_care_rounded,      'ሕፃን ዕድገት',    'የልጅዎን ዕድገት ይከታተሉ',           _P.gold),
+            const _Feat(Icons.calendar_month_rounded, 'ANC ክትትል', 'ሁሉንም ቀጠሮዎችዎን ይከታተሉ', _P.blue),
+            const _Feat(Icons.vaccines_rounded, 'ክትባት ማሳወቂያ', 'ለልጅዎ ክትባቶች ማሳወቂያ ያግኙ', _P.green),
+            const _Feat(Icons.emergency_rounded, 'አደጋ ጊዜ ድጋፍ', 'ፈጣን የጤና ድጋፍ ያግኙ (SOS)', _P.red),
+            const _Feat(Icons.child_care_rounded, 'የሕፃን ዕድገት', 'የልጅዎን የክብደትና ቁመት ዕድገት ይከታተሉ', _P.gold),
           ]
         : [
-            const _Feat(Icons.calendar_month_rounded, 'ANC Tracking',      'Track all your prenatal visits',    _P.blue),
-            const _Feat(Icons.vaccines_rounded,        'Vaccine Reminders', 'Never miss baby\'s immunizations',  _P.green),
-            const _Feat(Icons.emergency_rounded,       'Emergency SOS',     'Quick access to urgent support',    _P.red),
-            const _Feat(Icons.child_care_rounded,      'Child Growth',      'Monitor your baby\'s development',  _P.gold),
+            const _Feat(Icons.calendar_month_rounded, 'ANC Tracking', 'Track and organize your prenatal visits', _P.blue),
+            const _Feat(Icons.vaccines_rounded, 'Vaccine Reminders', 'Never miss baby\'s essential immunizations', _P.green),
+            const _Feat(Icons.emergency_rounded, 'Emergency SOS', 'Immediate 1-tap connection to hospital support', _P.red),
+            const _Feat(Icons.child_care_rounded, 'Child Growth', 'Monitor weight, height, and health milestones', _P.gold),
           ];
 
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      childAspectRatio: 1.2,
-      children: features.map((f) => _PressableCard(child: _FeatureCard(feat: f))).toList(),
+    return Column(
+      children: features.map((f) => _PressableCard(
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x043E2723),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: f.color.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(f.icon, color: f.color, size: 24),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      f.title,
+                      style: const TextStyle(
+                        color: _P.textDark,
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      f.desc,
+                      style: const TextStyle(
+                        color: _P.textMid,
+                        fontSize: 12,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded, color: _P.brownLight, size: 22),
+            ],
+          ),
+        ),
+      )).toList(),
     );
   }
 
-  // ── Sign In button ────────────────────────────────────────────────────────────
+  // ── Primary Button ─────────────────────────────────────────────────────────
   Widget _buildSignInButton(bool amharic) {
     return AnimatedBuilder(
       animation: _pulseAnim,
@@ -489,25 +509,27 @@ class _LandingScreenState extends State<LandingScreen>
       child: GestureDetector(
         onTap: () => Navigator.pushReplacementNamed(context, AppRoutes.login),
         child: Container(
-          height: 64,
+          height: 60,
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(32),
+            borderRadius: BorderRadius.circular(30),
             gradient: const LinearGradient(
               colors: [_P.brownDeep, _P.brownRich, _P.brownWarm],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
             boxShadow: [
               BoxShadow(
-                color: _P.brownRich.withOpacity(0.55),
-                blurRadius: 28,
-                offset: const Offset(0, 12),
+                color: _P.brownRich.withOpacity(0.4),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
               ),
             ],
           ),
           child: Stack(
             children: [
-              // Shimmer sweep
+              // Animated Shimmer Sweeper
               ClipRRect(
-                borderRadius: BorderRadius.circular(32),
+                borderRadius: BorderRadius.circular(30),
                 child: AnimatedBuilder(
                   animation: _shimmerAnim,
                   builder: (_, __) => Container(
@@ -525,35 +547,31 @@ class _LandingScreenState extends State<LandingScreen>
                   ),
                 ),
               ),
-              // Label
+              // Button Label Content
               Center(
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Flexible(
-                      child: Text(
-                        _btnLabel(amharic),
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 0.5,
-                        ),
-                        textAlign: TextAlign.center,
-                        overflow: TextOverflow.ellipsis,
+                    Text(
+                      _btnLabel(amharic),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 0.5,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 12),
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.25),
+                        color: Colors.white.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
                         Icons.arrow_forward_rounded,
                         color: Colors.white,
-                        size: 18,
+                        size: 16,
                       ),
                     ),
                   ],
@@ -568,7 +586,7 @@ class _LandingScreenState extends State<LandingScreen>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Pressable card with scale animation
+// Pressable Scale Animation Widget
 // ─────────────────────────────────────────────────────────────────────────────
 class _PressableCard extends StatefulWidget {
   final Widget child;
@@ -578,8 +596,7 @@ class _PressableCard extends StatefulWidget {
   State<_PressableCard> createState() => _PressableCardState();
 }
 
-class _PressableCardState extends State<_PressableCard>
-    with SingleTickerProviderStateMixin {
+class _PressableCardState extends State<_PressableCard> with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scale;
 
@@ -590,7 +607,7 @@ class _PressableCardState extends State<_PressableCard>
       vsync: this,
       duration: const Duration(milliseconds: 150),
     );
-    _scale = Tween<double>(begin: 1.0, end: 0.96).animate(
+    _scale = Tween<double>(begin: 1.0, end: 0.97).animate(
       CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
     );
   }
@@ -614,73 +631,6 @@ class _PressableCardState extends State<_PressableCard>
           child: child,
         ),
         child: widget.child,
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Feature card
-// ─────────────────────────────────────────────────────────────────────────────
-class _FeatureCard extends StatelessWidget {
-  final _Feat feat;
-  const _FeatureCard({required this.feat});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: feat.color.withOpacity(0.15),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(feat.icon, color: feat.color, size: 22),
-          ),
-          const SizedBox(height: 10),
-          Flexible(
-            child: Text(
-              feat.title,
-              style: const TextStyle(
-                color: _P.textDark,
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                height: 1.2,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Flexible(
-            child: Text(
-              feat.desc,
-              style: const TextStyle(
-                color: _P.textSoft,
-                fontSize: 10,
-                height: 1.4,
-              ),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
       ),
     );
   }

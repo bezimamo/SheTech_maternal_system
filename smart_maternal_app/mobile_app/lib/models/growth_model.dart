@@ -46,7 +46,7 @@ class GrowthModel {
   });
 
   factory GrowthModel.fromJson(Map<String, dynamic> json) {
-    DateTime _parseDate(dynamic v) {
+    DateTime parseDate(dynamic v) {
       if (v == null) return DateTime.now();
       try { return DateTime.parse(v.toString()); } catch (_) { return DateTime.now(); }
     }
@@ -62,7 +62,7 @@ class GrowthModel {
       id: json['_id'] ?? json['id'] ?? '',
       childId: resolveChildId(json['childId']),
       // Backend stores measurementDate; fallback to createdAt
-      measurementDate: _parseDate(json['measurementDate'] ?? json['createdAt']),
+      measurementDate: parseDate(json['measurementDate'] ?? json['createdAt']),
       ageMonths: (json['ageMonths'] ?? 0).toInt(),
       weight: (json['weight'] ?? 0).toDouble(),
       height: (json['height'] ?? 0).toDouble(),
@@ -76,11 +76,11 @@ class GrowthModel {
       notes: json['notes'],
       recommendations: json['recommendations'],
       needsFollowUp: json['needsFollowUp'] ?? false,
-      followUpDate: json['followUpDate'] != null ? _parseDate(json['followUpDate']) : null,
+      followUpDate: json['followUpDate'] != null ? parseDate(json['followUpDate']) : null,
       feedingPattern: json['feedingPattern'],
       developmentalMilestones: List<String>.from(json['developmentalMilestones'] ?? []),
       healthConcerns: List<String>.from(json['healthConcerns'] ?? []),
-      createdAt: _parseDate(json['createdAt']),
+      createdAt: parseDate(json['createdAt']),
     );
   }
 

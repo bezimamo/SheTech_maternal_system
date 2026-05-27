@@ -1,43 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { RecommendationRequestDto } from './dto/recommendation.dto';
 import { RecommendationResultDto, FoodAvoidanceDto } from './dto/recommendation-result.dto';
+import { nutritionRules } from './data/nutrition.rules';
+import { foodsToAvoidRules } from './data/foods_to_avoid.rules';
+import { sleepRules } from './data/sleep.rules';
+import { sunlightRules } from './data/sunlight.rules';
+import { feedingRules } from './data/feeding.rules';
+import { proteinDeficiencyRules, carbDeficiencyRules, ironDeficiencyRules } from './data/deficiency.rules';
 
 @Injectable()
 export class RecommendationService {
-  private readonly maternalNutritionRules: Record<string, string> = {
-    Pregnancy: 'Eat iron-rich foods',
-    Weakness: 'Increase protein and vegetables',
-    Anemia: 'Eat spinach, meat, lentils',
-    Constipation: 'Drink water + fruits',
-    'High BP': 'Reduce salty foods',
-    'Underweight mother': 'More calories and protein',
-  };
-
-  private readonly sleepPositionRules: Record<string, string> = {
-    'Pregnancy after 5 months': 'Sleep on left side',
-    'Back pain': 'Use pillow support',
-    'Difficulty breathing': 'Elevate head slightly',
-  };
-
-  private readonly deficiencyRules: Record<string, string> = {
-    'Swollen body': 'Increase protein (Eggs, beans, milk)',
-    'Thin muscles': 'Increase protein (Eggs, beans, milk)',
-    'Low energy': 'Add rice/injera/potato to increase healthy calories',
-    'Weight loss': 'Add rice/injera/potato to increase healthy calories',
-    'Pale skin': 'Iron foods',
-    Dizziness: 'Medical checkup',
-  };
-
-  private readonly foodsToAvoid: FoodAvoidanceDto[] = [
-    { food: 'Raw meat (ጥሬ ስጋ)', reason: 'Infection risk' },
-    { food: 'Unboiled milk', reason: 'Bacteria' },
-    { food: 'Alcohol', reason: 'Baby harm' },
-    { food: 'Smoking', reason: 'Pregnancy complications' },
-    { food: 'Too much coffee', reason: 'Sleep & BP problems' },
-    { food: 'Unsafe herbs', reason: 'Unknown effects' },
-  ];
-
-  private readonly sunlightConditions = new Set(['newborn', 'jaundice', 'weak bones']);
 
   evaluate(payload: RecommendationRequestDto): RecommendationResultDto {
     const conditions = this.normalizeList(payload.conditions);
@@ -48,47 +20,61 @@ export class RecommendationService {
     const foodsToAvoid: FoodAvoidanceDto[] = [];
     const feedingAdvice: string[] = [];
 
-    // Rule 1: Pregnancy Nutrition and symptom-based advice
-    for (const [key, advice] of Object.entries(this.maternalNutritionRules)) {
-      if (this.containsCondition(conditions, key)) {
-        recommendations.push(advice);
+    // Rule 1: PREGNANCY NUTRITION RULES
+    for (const rule of nutritionRules) {
+      if (this.containsCondition(conditions, rule.condition)) {
+        recommendations.push(...rule.recommendations);
       }
     }
 
     // Rule 2: Always include foods to avoid when any maternal condition is present
     if (conditions.length > 0) {
-      foodsToAvoid.push(...this.foodsToAvoid);
+      foodsToAvoid.push(...foodsToAvoidRules);
     }
 
-    // Rule 3: Sleep Positions
-    for (const [key, advice] of Object.entries(this.sleepPositionRules)) {
-      if (this.containsCondition(conditions, key)) {
-        recommendations.push(advice);
+    // Rule 3: SLEEP POSITION RULES
+    for (const rule of sleepRules) {
+      if (this.containsCondition(conditions, rule.condition)) {
+        recommendations.push(rule.advice);
       }
     }
 
-    // Rule 4: Sunlight for baby
-    if (babyConditions.some((condition) => this.sunlightConditions.has(condition))) {
-      recommendations.push(
-        'Morning sunlight 15–20 mins (Best time: Before 10 AM) with Vitamin D support',
-      );
+    // Rule 4: SUNLIGHT FOR BABY
+    for (const rule of sunlightRules) {
+      if (this.containsCondition(babyConditions, rule.babyCondition)) {
+        const fullAdvice = `${rule.recommendation} (Best time: ${rule.bestTime})`;
+        recommendations.push(fullAdvice);
+      }
     }
 
-    // Rule 5: Feeding
+    // Rule 5: FEEDING RECOMMENDATIONS
     if (payload.babyAgeMonths !== undefined && payload.babyAgeMonths !== null) {
-      if (payload.babyAgeMonths >= 0 && payload.babyAgeMonths < 6) {
-        feedingAdvice.push('Exclusive breastfeeding only');
-      } else if (payload.babyAgeMonths >= 6 && payload.babyAgeMonths < 12) {
-        feedingAdvice.push('Add: Soft porridge, Mashed potato, Banana, Egg, Vegetables');
-      } else if (payload.babyAgeMonths >= 12) {
-        feedingAdvice.push('Add: Family foods, Fruits, Protein foods');
+      for (const rule of feedingRules) {
+        if (payload.babyAgeMonths >= rule.minAge && payload.babyAgeMonths < rule.maxAge) {
+          feedingAdvice.push(...rule.recommendations);
+          break;
+        }
       }
     }
 
-    // Rule 6: Nutrient deficiencies
-    for (const [key, advice] of Object.entries(this.deficiencyRules)) {
-      if (this.containsCondition(deficiencies, key)) {
-        recommendations.push(advice);
+    // Rule 6: PROTEIN DEFICIENCY
+    for (const rule of proteinDeficiencyRules) {
+      if (this.containsCondition(deficiencies, rule.condition)) {
+        recommendations.push(rule.advice);
+      }
+    }
+
+    // Rule 7: CARBOHYDRATE DEFICIENCY
+    for (const rule of carbDeficiencyRules) {
+      if (this.containsCondition(deficiencies, rule.condition)) {
+        recommendations.push(rule.advice);
+      }
+    }
+
+    // Rule 8: IRON DEFICIENCY
+    for (const rule of ironDeficiencyRules) {
+      if (this.containsCondition(deficiencies, rule.condition)) {
+        recommendations.push(rule.advice);
       }
     }
 

@@ -22,7 +22,7 @@ class _VaccinationScreenState extends State<VaccinationScreen>
   
   ScheduleData? _scheduleData;
   List<dynamic> _children = [];
-  Map<String, List<dynamic>> _childVaccines = {};
+  final Map<String, List<dynamic>> _childVaccines = {};
   bool _isLoading = true;
 
   late AnimationController _entryController;

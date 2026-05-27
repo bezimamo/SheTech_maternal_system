@@ -223,7 +223,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Widget _buildLogoutButton(bool isAmharic) {
-    return Container(
+    return SizedBox(
       width: double.infinity,
       height: 56,
       child: OutlinedButton.icon(

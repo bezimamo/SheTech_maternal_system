@@ -9,7 +9,7 @@ class AppTranslations {
       'password': {'en': 'Password', 'am': 'የይለፍ ቃል'},
       'enter_your_password': {'en': 'Enter your password', 'am': 'የይለፍ ቃልዎን ያስገቡ'},
       'forgot_password': {'en': 'Forgot Password?', 'am': 'የይለፍ ቃል ረሳዎ?'},
-      'welcome_back': {'en': 'Welcome Back', 'am': 'መልአም በደህና መጡ'},
+      'welcome_back': {'en': 'Welcome Back', 'am': 'እንኳን በደህና መጡ'},
       'sign_in_to_continue': {'en': 'Sign in to continue', 'am': 'ለመቀጠል ይግቡ'},
       'login_successful': {'en': 'Login successful', 'am': 'መግባት በተሳካ ሁኔታ ተከናውኗል'},
       'login_failed': {'en': 'Login failed', 'am': 'መግባት አልተሳካም'},
@@ -49,7 +49,7 @@ class AppTranslations {
       'referrals': {'en': 'Referrals', 'am': 'ማጓጓዣዎች'},
       'my_profile': {'en': 'My Profile', 'am': 'የእኔ መገለጫ'},
       'mama_insight': {'en': 'Mama Insight', 'am': 'እናት ግንዛቤ'},
-      'health_tip_default': {'en': 'Your baby is now the size of a small melon! Keep nourishing your body with iron-rich foods like spinach and lean meats.', 'am': 'ልጅዎ አሁን እንደ ትንሹ ጥርስ ይመስላል! ሰላጣ እና ቀላል ስጋ ያሉ በብረት ሰርጓጅ የተሟላም ምግቦችን በመመገብ ሰዎን አመጋገብ ይጥጉ!'},
+      'health_tip_default': {'en': 'Your baby is now the size of a small melon! Keep nourishing your body with iron-rich foods like spinach and lean meats.', 'am': 'ልጅዎ አሁን ትንሽ ሐብሐብ ነው! እንደ ስፒናች እና ስስ ስጋ ባሉ በብረት የበለጸጉ ምግቦች ሰውነታችሁን ይመግቡ!'},
       
       // Common
       'loading': {'en': 'Loading...', 'am': 'በመጫን ላይ...'},

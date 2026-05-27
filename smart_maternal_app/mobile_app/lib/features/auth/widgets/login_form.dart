@@ -53,9 +53,7 @@ class _LoginFormScreenState extends State<LoginForm> {
 
     if (result['success']) {
       Helpers.showSnackBar(context, AppTranslations.get('login_successful', context.read<LanguageService>().isAmharic));
-      final role = result['data']?['role']?.toString();
-      final route = role == 'MOTHER' ? AppRoutes.motherDashboard : AppRoutes.dashboard;
-      Navigator.pushReplacementNamed(context, route);
+      Navigator.pushReplacementNamed(context, AppRoutes.home);
     } else {
       Helpers.showSnackBar(
         context,
