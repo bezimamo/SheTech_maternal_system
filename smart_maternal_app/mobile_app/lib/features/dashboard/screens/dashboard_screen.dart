@@ -6,6 +6,7 @@ import '../../../core/services/language_service.dart';
 import '../../../routes/app_routes.dart';
 import '../../../models/user_model.dart';
 import '../../profile/services/profile_service.dart';
+import '../screens/main_navigation_screen.dart';
 import 'package:intl/intl.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -84,19 +85,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
         background: Stack(
           fit: StackFit.expand,
           children: [
-            // Background Image (local Ethiopian mother-child illustration)
-            Image.asset(
-              'assets/images/ethiopian_mother_child.png',
+            // Background Image
+            Image.network(
+              'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?q=80&w=1453&auto=format&fit=crop',
               fit: BoxFit.cover,
-              alignment: Alignment.topCenter,
             ),
             // Gradient Overlay
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.secondaryDark.withOpacity(0.85),
-                    AppColors.primaryDark.withOpacity(0.4),
+                    Colors.black.withOpacity(0.7),
+                    Colors.black.withOpacity(0.3),
                     Colors.transparent,
                   ],
                   begin: Alignment.bottomCenter,
@@ -161,10 +161,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Text(
           title,
           style: const TextStyle(
-            fontSize: 22,
+            fontSize: 18,
             fontWeight: FontWeight.bold,
             color: AppColors.text,
-            letterSpacing: -0.5,
           ),
         ),
       ],
@@ -172,32 +171,62 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildProgressTrackingCard(bool isAmharic) {
-    final week = _user?.pregnancyInfo?.currentWeek ?? 0;
-    final nextVisit = _user?.pregnancyInfo?.nextAppointment;
-    final dueDate = _user?.pregnancyInfo?.dueDate;
-    final progress = week / 40.0;
-
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(30),
         boxShadow: [
-          BoxShadow(color: AppColors.shadow.withOpacity(0.04), blurRadius: 20, offset: const Offset(0, 10)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildMetricItem(AppTranslations.get('week', isAmharic), '$week', Icons.pregnant_woman, AppColors.primary),
-              const Spacer(),
-              _buildMetricItem(
-                AppTranslations.get('due_date', isAmharic), 
-                dueDate != null ? DateFormat('MMM d').format(dueDate) : AppTranslations.get('tbd', isAmharic), 
-                Icons.child_care, 
-                AppColors.warning
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.health_and_safety_rounded, color: AppColors.primary, size: 28),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.success.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'On Track',
+                  style: TextStyle(color: AppColors.success, fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          const Text(
+            'Pregnancy Progress',
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                '24 Weeks',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.text),
+              ),
+              const Text(
+                '3rd Trimester',
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.primary),
               ),
             ],
           ),
@@ -213,11 +242,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               FractionallySizedBox(
-                widthFactor: progress > 1.0 ? 1.0 : progress,
+                widthFactor: 0.6,
                 child: Container(
                   height: 12,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [AppColors.primary, AppColors.primaryDark]),
+                    gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFFFFA0B4)]),
                     borderRadius: BorderRadius.circular(6),
                     boxShadow: [
                       BoxShadow(color: AppColors.primary.withOpacity(0.3), blurRadius: 6, offset: const Offset(0, 2)),
@@ -230,54 +259,40 @@ class _DashboardScreenState extends State<DashboardScreen> {
           const SizedBox(height: 24),
           const Divider(height: 1),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: AppColors.info.withOpacity(0.1), shape: BoxShape.circle),
-                child: const Icon(Icons.event_available, color: AppColors.info, size: 20),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      AppTranslations.get('next_appointment', isAmharic), 
-                      style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)
-                    ),
-                    Text(
-                      nextVisit != null ? DateFormat('EEEE, MMMM d').format(nextVisit) : AppTranslations.get('schedule_pending', isAmharic),
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-                    ),
-                  ],
+          GestureDetector(
+            onTap: () {
+              final mainNav = MainNavigationScreen.of(context);
+              mainNav?.changeTab(1);
+            },
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(color: Colors.blue.withOpacity(0.1), shape: BoxShape.circle),
+                  child: const Icon(Icons.event_available, color: Colors.blue, size: 20),
                 ),
-              ),
-              const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-            ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        AppTranslations.get('next_appointment', isAmharic), 
+                        style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      ),
+                      Text(
+                        'Tomorrow, 10:00 AM',
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+              ],
+            ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildMetricItem(String label, String value, IconData icon, Color color) {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
-          child: Icon(icon, color: color, size: 20),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 11, fontWeight: FontWeight.bold)),
-            Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.text)),
-          ],
-        ),
-      ],
     );
   }
 
@@ -290,51 +305,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
       crossAxisSpacing: 16,
       childAspectRatio: 1.1,
       children: [
-        _buildActionCard(Icons.calendar_month_rounded, AppTranslations.get('appointments', isAmharic), AppColors.info, AppRoutes.appointments),
-        _buildActionCard(Icons.child_care_rounded, AppTranslations.get('child_growth', isAmharic), AppColors.success, AppRoutes.childGrowth),
-        _buildActionCard(Icons.vaccines_rounded, AppTranslations.get('vaccinations', isAmharic), AppColors.warning, AppRoutes.vaccination),
-        _buildActionCard(Icons.warning_amber_rounded, AppTranslations.get('danger_signs', isAmharic), AppColors.error, AppRoutes.dangerSigns),
-        _buildActionCard(Icons.local_hospital_rounded, AppTranslations.get('referrals', isAmharic), AppColors.primary, AppRoutes.referrals),
-        _buildActionCard(Icons.person_rounded, AppTranslations.get('my_profile', isAmharic), AppColors.primaryDark, AppRoutes.profile),
+        _buildActionCard(Icons.calendar_month_rounded, AppTranslations.get('appointments', isAmharic), Colors.blue, tabIndex: 1),
+        _buildActionCard(Icons.child_care_rounded, AppTranslations.get('child_growth', isAmharic), Colors.green, tabIndex: 2),
+        _buildActionCard(Icons.vaccines_rounded, AppTranslations.get('vaccinations', isAmharic), Colors.orange, route: AppRoutes.vaccination),
+        _buildActionCard(Icons.warning_amber_rounded, AppTranslations.get('danger_signs', isAmharic), Colors.red, route: AppRoutes.dangerSigns),
+        _buildActionCard(Icons.local_hospital_rounded, AppTranslations.get('referrals', isAmharic), Colors.purple, route: AppRoutes.referrals),
+        _buildActionCard(Icons.person_rounded, AppTranslations.get('my_profile', isAmharic), Colors.brown, tabIndex: 4),
       ],
     );
   }
 
-  Widget _buildActionCard(IconData icon, String title, Color color, String route) {
-    return _PressableCard(
-      child: GestureDetector(
-        onTap: () => Navigator.pushNamed(context, route),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(color: AppColors.shadow.withOpacity(0.04), blurRadius: 12, offset: const Offset(0, 6)),
-            ],
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                child: Icon(icon, color: color, size: 24),
+  Widget _buildActionCard(IconData icon, String title, Color color, {int? tabIndex, String? route}) {
+    return GestureDetector(
+      onTap: () {
+        if (tabIndex != null) {
+          final mainNav = MainNavigationScreen.of(context);
+          mainNav?.changeTab(tabIndex);
+        } else if (route != null) {
+          Navigator.pushNamed(context, route);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 10, offset: const Offset(0, 4)),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(15),
               ),
-              const Spacer(),
-              Flexible(
-                child: Text(
-                  title,
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.text),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 2,
-                ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const Spacer(),
+            Flexible(
+              child: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.text),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -346,12 +366,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [AppColors.primary.withOpacity(0.12), AppColors.primary.withOpacity(0.04)],
+          colors: [AppColors.primary.withOpacity(0.1), AppColors.primary.withOpacity(0.05)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.primary.withOpacity(0.15)),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: AppColors.primary.withOpacity(0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -362,7 +382,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(width: 8),
               Text(
                 AppTranslations.get('mama_insight', isAmharic), 
-                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15)
+                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15),
               ),
             ],
           ),
@@ -372,58 +392,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             style: const TextStyle(color: AppColors.textSecondary, fontSize: 15, height: 1.6),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Pressable card with scale animation for dashboard cards
-// ─────────────────────────────────────────────────────────────────────────────
-class _PressableCard extends StatefulWidget {
-  final Widget child;
-  const _PressableCard({required this.child});
-
-  @override
-  State<_PressableCard> createState() => _PressableCardState();
-}
-
-class _PressableCardState extends State<_PressableCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scale;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 150),
-    );
-    _scale = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) => _controller.reverse(),
-      onTapCancel: () => _controller.reverse(),
-      child: AnimatedBuilder(
-        animation: _scale,
-        builder: (_, child) => Transform.scale(
-          scale: _scale.value,
-          child: child,
-        ),
-        child: widget.child,
       ),
     );
   }

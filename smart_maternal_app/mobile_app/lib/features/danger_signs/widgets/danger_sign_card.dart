@@ -57,14 +57,14 @@ class DangerSignCard extends StatelessWidget {
           children: [
             if (imagePath != null)
               SizedBox(
-                height: 180,
+                height: 220,
                 width: double.infinity,
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
                     Image.asset(
                       imagePath!,
-                      fit: BoxFit.cover,
+                      fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) => Container(
                         color: AppColors.primary.withOpacity(0.05),
                         child: const Icon(Icons.image_not_supported, color: AppColors.textSecondary),

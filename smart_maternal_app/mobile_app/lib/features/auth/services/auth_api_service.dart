@@ -90,6 +90,48 @@ class AuthApiService {
     }
   }
 
+  Future<Map<String, dynamic>> forgotPassword(String email) async {
+    try {
+      final response = await _apiService.post(
+        ApiConstants.forgotPasswordEndpoint,
+        body: {'email': email},
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true};
+      }
+
+      final decoded = _parseResponse(response.body);
+      return {
+        'success': false,
+        'message': decoded['message'] ?? decoded['error'] ?? 'Failed to send reset link',
+      };
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
+  Future<Map<String, dynamic>> resetPassword(String token, String newPassword) async {
+    try {
+      final response = await _apiService.post(
+        ApiConstants.resetPasswordEndpoint,
+        body: {'token': token, 'newPassword': newPassword},
+      );
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true};
+      }
+
+      final decoded = _parseResponse(response.body);
+      return {
+        'success': false,
+        'message': decoded['message'] ?? decoded['error'] ?? 'Failed to reset password',
+      };
+    } catch (e) {
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
   Map<String, dynamic> _parseResponse(String responseBody) {
     try {
       final decoded = jsonDecode(responseBody);

@@ -94,6 +94,23 @@ class _LoginFormScreenState extends State<LoginForm> {
             controller: _passwordController,
             validator: Validators.validatePassword,
           ),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, AppRoutes.forgotPassword);
+              },
+              child: Text(
+                AppTranslations.get('forgot_password', lang.isAmharic),
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 24),
           CustomButton(
             text: AppTranslations.get('sign_in', lang.isAmharic),

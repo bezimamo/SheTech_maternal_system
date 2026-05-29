@@ -115,11 +115,18 @@ class RecommendationModel {
   });
 
   factory RecommendationModel.fromJson(Map<String, dynamic> json) {
+    List<dynamic> allRecommendations = [];
+    // Combine all possible recommendation lists from backend
+    if (json['recommendations'] is List) allRecommendations.addAll(json['recommendations']);
+    if (json['nutritionRecommendations'] is List) allRecommendations.addAll(json['nutritionRecommendations']);
+    if (json['sleepAdvice'] is List) allRecommendations.addAll(json['sleepAdvice']);
+    if (json['sunlightAdvice'] is List) allRecommendations.addAll(json['sunlightAdvice']);
+    if (json['deficiencyAdvice'] is List) allRecommendations.addAll(json['deficiencyAdvice']);
+    
     return RecommendationModel(
-      dailyRecommendations: (json['recommendations'] as List<dynamic>?)
-              ?.map((e) => DailyRecommendation.fromJson(e))
-              .toList() ??
-          [],
+      dailyRecommendations: allRecommendations
+          .map((e) => DailyRecommendation.fromJson(e))
+          .toList(),
       foodsToAvoid: (json['foodsToAvoid'] as List<dynamic>?)
               ?.map((e) => FoodWarning.fromJson(e as Map<String, dynamic>))
               .toList() ??

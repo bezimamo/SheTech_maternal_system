@@ -10,14 +10,36 @@ import '../../recommendations/screens/recommendations_screen.dart';
 import '../../profile/screens/profile_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
-  const MainNavigationScreen({super.key});
+  const MainNavigationScreen({super.key, this.initialIndex = 0});
+  
+  final int initialIndex;
+
+  // Static method to get the state from context
+  static _MainNavigationScreenState? of(BuildContext context) {
+    return context.findAncestorStateOfType<_MainNavigationScreenState>();
+  }
 
   @override
   State<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
-  int _currentIndex = 0;
+  late int _currentIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentIndex = widget.initialIndex;
+  }
+
+  // Function to change tab from child screens
+  void changeTab(int index) {
+    if (mounted) {
+      setState(() {
+        _currentIndex = index;
+      });
+    }
+  }
 
   final List<Widget> _screens = const [
     DashboardScreen(),

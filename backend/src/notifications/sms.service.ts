@@ -39,7 +39,7 @@ export class SmsService {
     try {
       const result = await this.client.SMS.send({
         to: [normalizedPhone],
-        message: 'TEST: Smart Maternal Health System SMS test message. If you see this, SMS is working!',
+        message: 'ሰላም የቀጠሮ 3 ቀን ስለቀረው አስታውሰው በሰአቱ ክትትል ወደሚያደርጉበት የጤና ተቋም ይገኙ !',
         from: process.env.AT_SENDER_ID || undefined,
       });
       this.logger.log(`TEST SMS result: ${JSON.stringify(result)}`);

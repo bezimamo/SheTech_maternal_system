@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../features/auth/screens/splash_screen.dart';
 import '../features/auth/screens/landing_screen.dart';
 import '../features/auth/screens/login_screen.dart';
+import '../features/auth/screens/forgot_password_screen.dart';
 import '../features/dashboard/screens/main_navigation_screen.dart';
 import '../features/dashboard/screens/dashboard_screen.dart';
 import '../features/appointments/screens/appointments_screen.dart';
@@ -17,6 +18,7 @@ class AppRoutes {
   static const String splash           = '/';
   static const String landing          = '/landing';
   static const String login            = '/login';
+  static const String forgotPassword   = '/forgot-password';
   static const String home             = '/home';
   static const String dashboard        = '/dashboard';
   static const String motherDashboard  = '/mother-dashboard';
@@ -33,7 +35,8 @@ class AppRoutes {
     splash:          (context) => const SplashScreen(),
     landing:         (context) => const LandingScreen(),
     login:           (context) => const LoginScreen(),
-    home:            (context) => const MainNavigationScreen(),
+    forgotPassword:  (context) => const ForgotPasswordScreen(),
+    home:            (context) => MainNavigationScreen(),
     dashboard:       (context) => const DashboardScreen(),
     motherDashboard: (context) => const DashboardScreen(),
     appointments:    (context) => const AppointmentsScreen(),

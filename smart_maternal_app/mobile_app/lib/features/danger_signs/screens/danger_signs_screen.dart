@@ -176,7 +176,7 @@ class _DangerSignsScreenState extends State<DangerSignsScreen> with SingleTicker
     final lang = context.watch<LanguageService>();
     
     return Scaffold(
-      backgroundColor: const Color(0xFFFBFBFB),
+      backgroundColor: AppColors.background,
       appBar: AppBarWidget(
         title: AppTranslations.get('danger_signs', lang.isAmharic),
         actions: [

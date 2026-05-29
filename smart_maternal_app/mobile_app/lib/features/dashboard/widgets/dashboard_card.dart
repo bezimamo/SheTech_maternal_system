@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_text_styles.dart';
 import '../../../models/user_model.dart';
 import '../../profile/services/profile_service.dart';
@@ -34,14 +33,14 @@ class _DashboardCardState extends State<DashboardCard> {
           height: 180,
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [AppColors.primary, AppColors.primaryLight],
+              colors: [Color(0xFF8D6E63), Color(0xFFD7CCC8)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
-                color: AppColors.shadow.withOpacity(0.08),
+                color: Colors.black.withOpacity(0.1),
                 blurRadius: 12,
                 offset: const Offset(0, 6),
               ),
@@ -54,11 +53,11 @@ class _DashboardCardState extends State<DashboardCard> {
                 right: -20,
                 bottom: -10,
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(20),
                   child: Opacity(
-                    opacity: 0.75,
+                    opacity: 0.8,
                     child: Image.asset(
-                      'assets/images/ethiopian_mother_child.png',
+                      'assets/images/pregnant_mother2.jpg',
                       height: 190,
                       fit: BoxFit.cover,
                     ),
