@@ -54,17 +54,6 @@ export default function HospitalsPage() {
     setShowEditForm(true);
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this hospital?')) return;
-    
-    try {
-      await api.deleteHospital(id);
-      setHospitals(hospitals.filter(h => h._id !== id));
-    } catch (err: any) {
-      setError(err.message || 'Failed to delete hospital');
-    }
-  };
-
   const handleUpdate = async (updatedData: Partial<Hospital>) => {
     if (!editingHospital) return;
     
@@ -197,15 +186,9 @@ export default function HospitalsPage() {
                               <div className="flex space-x-2">
                                 <button
                                   onClick={() => handleEdit(hospital)}
-                                  className="text-blue-600 hover:text-blue-900 mr-2"
+                                  className="text-blue-600 hover:text-blue-900"
                                 >
                                   Edit
-                                </button>
-                                <button
-                                  onClick={() => handleDelete(hospital._id)}
-                                  className="text-red-600 hover:text-red-900"
-                                >
-                                  Delete
                                 </button>
                               </div>
                             </td>

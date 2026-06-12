@@ -39,17 +39,6 @@ export default function SystemDashboardHospitals() {
     setShowAddHospital(true);
   };
 
-  const handleDeleteHospital = async (hospitalId: string) => {
-    if (!window.confirm('Are you sure you want to delete this hospital?')) return;
-    
-    try {
-      await api.deleteHospital(hospitalId);
-      fetchHospitals();
-    } catch (error) {
-      console.error('Failed to delete hospital:', error);
-    }
-  };
-
   if (loading) {
     return (
       <ProtectedRoute requiredRole={['SYSTEM_ADMIN']}>
@@ -152,15 +141,9 @@ export default function SystemDashboardHospitals() {
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <button
                             onClick={() => handleEditHospital(hospital)}
-                            className="text-blue-600 hover:text-blue-900 mr-3"
+                            className="text-blue-600 hover:text-blue-900"
                           >
                             Edit
-                          </button>
-                          <button
-                            onClick={() => handleDeleteHospital(hospital._id)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Delete
                           </button>
                         </td>
                       </tr>

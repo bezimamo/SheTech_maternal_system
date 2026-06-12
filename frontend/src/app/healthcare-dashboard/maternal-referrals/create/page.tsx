@@ -156,6 +156,7 @@ export default function CreateMaternalReferral() {
       const referralData = {
         motherId: formData.motherId,
         fromHospital: formData.fromHospital,
+        toHospital: formData.toHospital || undefined, // For draft, may be undefined
         urgency: formData.urgency,
         riskLevel: formData.riskLevel,
         gestationalAge: Number(formData.gestationalAge) || undefined,
@@ -270,9 +271,9 @@ export default function CreateMaternalReferral() {
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Mother Selection */}
+            {/* Mother Selection and Destination Facility */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Select Mother *
                 </label>
@@ -287,6 +288,24 @@ export default function CreateMaternalReferral() {
                   {mothers.map((mother) => (
                     <option key={mother._id} value={mother._id}>
                       {mother.name} - {mother.phone} - {mother.age} years
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Destination Facility/Hospital
+                </label>
+                <select
+                  name="toHospital"
+                  value={formData.toHospital}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="">Select destination facility</option>
+                  {hospitals.map((hospital) => (
+                    <option key={hospital._id} value={hospital._id}>
+                      {hospital.name} ({hospital.type || 'HOSPITAL'})
                     </option>
                   ))}
                 </select>
@@ -481,10 +500,10 @@ export default function CreateMaternalReferral() {
               </button>
               <button
                 type="submit"
-                disabled={submitting || uploadingFile}
+                disabled={submitting || uploadingFile || !formData.motherId || !formData.reasonForReferral}
                 className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {submitting ? 'Creating Referral...' : uploadingFile ? 'Uploading Document...' : 'Create Referral'}
+                {submitting ? 'Creating...' : uploadingFile ? 'Uploading Document...' : 'Create Referral'}
               </button>
             </div>
           </form>

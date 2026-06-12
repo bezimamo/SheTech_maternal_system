@@ -54,12 +54,6 @@ export default function MOHDashboard() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const deleteHospital = async (id: string) => {
-    if (!confirm('Delete this facility permanently?')) return;
-    try { await api.deleteHospital(id); fetchAll(); }
-    catch (e: any) { alert(e.message || 'Delete failed'); }
-  };
-
   const deleteUser = async (id: string) => {
     if (!confirm('Delete this user permanently?')) return;
     try { await api.deleteUser(id); fetchAll(); }
@@ -253,8 +247,6 @@ export default function MOHDashboard() {
                               <div className="flex gap-2">
                                 <button onClick={() => openAddHospital(h)}
                                   className="px-3 py-1 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700">Edit</button>
-                                <button onClick={() => deleteHospital(h._id)}
-                                  className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600">Delete</button>
                               </div>
                             </td>
                           </tr>
@@ -309,8 +301,6 @@ export default function MOHDashboard() {
                               <div className="flex gap-2">
                                 <button onClick={() => openAddHospital(h)}
                                   className="px-3 py-1 bg-blue-600 text-white text-xs rounded-lg hover:bg-blue-700">Edit</button>
-                                <button onClick={() => deleteHospital(h._id)}
-                                  className="px-3 py-1 bg-red-500 text-white text-xs rounded-lg hover:bg-red-600">Delete</button>
                               </div>
                             </td>
                           </tr>

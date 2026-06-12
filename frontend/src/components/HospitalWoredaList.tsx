@@ -28,33 +28,10 @@ export function HospitalWoredaList({
     setEditingHospital(hospital);
   };
 
-  const handleDeleteHospital = async (hospital: any) => {
-    if (!window.confirm(`Are you sure you want to delete "${hospital.name}"?`)) return;
-    
-    try {
-      await api.deleteHospital(hospital._id);
-      setHospitals(prev => prev.filter(h => h._id !== hospital._id));
-    } catch (error) {
-      console.error('Failed to delete hospital:', error);
-      alert('Failed to delete hospital');
-    }
-  };
-
   const handleEditWoreda = (woreda: any) => {
     setEditingWoreda(woreda);
   };
 
-  const handleDeleteWoreda = async (woreda: any) => {
-    if (!window.confirm(`Are you sure you want to delete "${woreda.name}"?`)) return;
-    
-    try {
-      await api.deleteWoreda(woreda._id);
-      setWoredas(prev => prev.filter(w => w._id !== woreda._id));
-    } catch (error) {
-      console.error('Failed to delete woreda:', error);
-      alert('Failed to delete woreda');
-    }
-  };
 
   useEffect(() => {
     // Use pre-filtered data if provided, otherwise fetch and filter
@@ -137,15 +114,9 @@ export function HospitalWoredaList({
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
                           onClick={() => handleEditHospital(hospital)}
-                          className="text-blue-600 hover:text-blue-900 mr-3"
+                          className="text-blue-600 hover:text-blue-900"
                         >
                           Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteHospital(hospital)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
                         </button>
                       </td>
                     </tr>
@@ -185,15 +156,9 @@ export function HospitalWoredaList({
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <button
                           onClick={() => handleEditWoreda(woreda)}
-                          className="text-blue-600 hover:text-blue-900 mr-3"
+                          className="text-blue-600 hover:text-blue-900"
                         >
                           Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteWoreda(woreda)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Delete
                         </button>
                       </td>
                     </tr>

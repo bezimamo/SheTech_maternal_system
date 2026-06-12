@@ -101,7 +101,7 @@ export class ReferralsService {
       ...referralData,
       fromHospital: facilityId,
       fromFacilityType,
-      toHospital: undefined, // Only liaison officer sets target hospital when sending
+      toHospital: referralData.toHospital ? new Types.ObjectId(referralData.toHospital) : undefined,
       motherId: new Types.ObjectId(mother._id),
       motherSnapshot: {
         name: mother?.name,
