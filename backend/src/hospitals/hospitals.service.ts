@@ -32,7 +32,8 @@ export class HospitalsService {
     if ((role === 'HOSPITAL_ADMIN' || role === 'HEALTH_CENTER_ADMIN') && validId(hospitalId)) {
       return this.hospitalModel.find({ _id: hospitalId }).populate({ path: 'woredaId', populate: { path: 'regionId' } }).exec();
     }
-    if (role === 'SYSTEM_ADMIN' && validId(regionId)) {
+    if (role === 'SYSTEM_ADMIN') {
+      if (!validId(regionId)) return [];
       const hospitals = await this.hospitalModel.find().populate({ path: 'woredaId', populate: { path: 'regionId' } }).exec();
       return hospitals.filter((h: any) => {
         const woredaRegion = h.woredaId && typeof h.woredaId === 'object' ? (h.woredaId as any).regionId : null;

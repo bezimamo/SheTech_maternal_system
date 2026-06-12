@@ -36,7 +36,7 @@ export class UsersController {
         user.role,
         undefined,
         undefined,
-        user.assignedRegion ?? user.regionId?.toString(),
+        user.regionId?.toString(),
       );
     }
 
@@ -123,7 +123,12 @@ export class UsersController {
   async findById(@Param('id') id: string, @Request() req) {
     // 'me' is handled by GET /users/me — should never reach here
     if (id === 'me') {
-      return this.usersService.findByIdWithRoleFilter(req.user.sub, 'SYSTEM_ADMIN');
+      return this.usersService.findByIdWithRoleFilter(
+        req.user.sub,
+        req.user.role,
+        req.user.hospitalId?.toString(),
+        req.user.regionId?.toString(),
+      );
     }
     const user = req.user;
     return this.usersService.findByIdWithRoleFilter(
@@ -146,9 +151,20 @@ export class UsersController {
   async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto, @Request() req) {
     const user = req.user;
     
-    if (user.role === 'SYSTEM_ADMIN' || user.role === 'SUPER_ADMIN') {
+    if (user.role === 'SUPER_ADMIN') {
       return this.usersService.update(id, updateUserDto);
-    } else if (user.role === 'HOSPITAL_ADMIN' || user.role === 'HEALTH_CENTER_ADMIN') {
+    }
+    if (user.role === 'SYSTEM_ADMIN') {
+      return this.usersService.updateWithRoleValidation(
+        id,
+        updateUserDto,
+        user.role,
+        undefined,
+        undefined,
+        user.regionId?.toString(),
+      );
+    }
+    if (user.role === 'HOSPITAL_ADMIN' || user.role === 'HEALTH_CENTER_ADMIN') {
       return this.usersService.updateWithRoleValidation(
         id,
         updateUserDto, 
@@ -177,8 +193,17 @@ export class UsersController {
   async delete(@Param('id') id: string, @Request() req) {
     const user = req.user;
     
-    if (user.role === 'SYSTEM_ADMIN' || user.role === 'SUPER_ADMIN') {
+    if (user.role === 'SUPER_ADMIN') {
       return this.usersService.delete(id);
+    }
+    if (user.role === 'SYSTEM_ADMIN') {
+      return this.usersService.deleteWithRoleValidation(
+        id,
+        user.role,
+        undefined,
+        undefined,
+        user.regionId?.toString(),
+      );
     } else if (user.role === 'HOSPITAL_ADMIN' || user.role === 'HEALTH_CENTER_ADMIN') {
       return this.usersService.deleteWithRoleValidation(
         id,

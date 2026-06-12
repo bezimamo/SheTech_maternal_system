@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, UseGuards, Request, Param } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, UseGuards, Request, Param, ForbiddenException } from '@nestjs/common';
 import { WoredasService } from './woredas.service';
 import { CreateWoredaDto } from './dto/create-woreda.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -20,7 +20,14 @@ export class WoredasController {
   @ApiResponse({ status: 400, description: 'Bad Request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden - Only SUPER_ADMIN can create woredas' })
-  async create(@Body() createWoredaDto: CreateWoredaDto) {
+  async create(@Body() createWoredaDto: CreateWoredaDto, @Request() req) {
+    const user = req.user;
+    if (user.role === 'SYSTEM_ADMIN') {
+      const regionId = user.regionId?.toString();
+      if (!regionId || createWoredaDto.regionId !== regionId) {
+        throw new ForbiddenException('System Admin can only create woredas in their own region');
+      }
+    }
     return this.woredasService.create(createWoredaDto);
   }
 
@@ -43,7 +50,21 @@ export class WoredasController {
   @ApiResponse({ status: 400, description: 'Bad Request' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
-  async update(@Param('id') id: string, @Body() updateWoredaDto: any) {
+  async update(@Param('id') id: string, @Body() updateWoredaDto: any, @Request() req) {
+    const user = req.user;
+    if (user.role === 'SYSTEM_ADMIN') {
+      const regionId = user.regionId?.toString();
+      const woreda = await this.woredasService.findById(id);
+      const woredaRegion = woreda?.regionId && typeof woreda.regionId === 'object'
+        ? woreda.regionId._id?.toString()
+        : woreda?.regionId?.toString();
+      if (!regionId || regionId !== woredaRegion) {
+        throw new ForbiddenException('System Admin can only update woredas in their own region');
+      }
+      if (updateWoredaDto.regionId && updateWoredaDto.regionId !== regionId) {
+        throw new ForbiddenException('System Admin cannot move a woreda to another region');
+      }
+    }
     return this.woredasService.update(id, updateWoredaDto);
   }
 
@@ -53,7 +74,18 @@ export class WoredasController {
   @ApiResponse({ status: 200, description: 'Woreda deleted successfully' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden' })
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id') id: string, @Request() req) {
+    const user = req.user;
+    if (user.role === 'SYSTEM_ADMIN') {
+      const regionId = user.regionId?.toString();
+      const woreda = await this.woredasService.findById(id);
+      const woredaRegion = woreda?.regionId && typeof woreda.regionId === 'object'
+        ? woreda.regionId._id?.toString()
+        : woreda?.regionId?.toString();
+      if (!regionId || regionId !== woredaRegion) {
+        throw new ForbiddenException('System Admin can only delete woredas in their own region');
+      }
+    }
     return this.woredasService.remove(id);
   }
 }

@@ -283,6 +283,25 @@ export function AddUserForm({
             </div>
           )}
 
+          {/* ── System admin region selection ── */}
+          {form.role === 'SYSTEM_ADMIN' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Region <span className="text-red-500">*</span>
+              </label>
+              <select required value={form.regionId} onChange={e => setForm(p => ({ ...p, regionId: e.target.value }))}
+                className="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="">— Select Region —</option>
+                {regions.map((r: any) => (
+                  <option key={r._id} value={r._id?.toString() ?? ''}>{r.name}</option>
+                ))}
+              </select>
+              {regions.length === 0 && (
+                <p className="text-xs text-amber-600 mt-1">⚠ No regions available. Create a region first.</p>
+              )}
+            </div>
+          )}
+
           {/* ── Woreda selection (all non-national roles) ── */}
           {needsWoreda && !isFacilityAdmin && (
             <div>

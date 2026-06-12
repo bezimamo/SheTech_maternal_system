@@ -56,7 +56,7 @@ export class UsersService {
   }
 
   async create(createUserDto: CreateUserDto): Promise<User> {
-    const { email, password, role, hospitalId, healthCenterId, woredaId, ...userData } = createUserDto;
+    const { email, password, role, hospitalId, healthCenterId, woredaId, regionId, ...userData } = createUserDto;
     const selectedHospitalId = hospitalId ?? healthCenterId;
     const normalizedEmail = this.normalizeEmail(email);
 
@@ -79,6 +79,9 @@ export class UsersService {
         : undefined,
       woredaId: woredaId && Types.ObjectId.isValid(woredaId) 
         ? new Types.ObjectId(woredaId) 
+        : undefined,
+      regionId: regionId && Types.ObjectId.isValid(regionId)
+        ? new Types.ObjectId(regionId)
         : undefined,
     });
 
@@ -156,7 +159,7 @@ export class UsersService {
     creatorWoredaId?: string,
     creatorAssignedRegion?: string,
   ): Promise<User> {
-    const { role: newRole, hospitalId } = createUserDto;
+    const { role: newRole, hospitalId, woredaId, regionId } = createUserDto;
 
     if (creatorRole === 'HOSPITAL_ADMIN' || creatorRole === 'HEALTH_CENTER_ADMIN') {
       if (!creatorHospitalId) {
@@ -166,8 +169,8 @@ export class UsersService {
       // Check for restricted roles first
       if (newRole === 'HOSPITAL_ADMIN') {
         throw new BadRequestException('Hospital Admin cannot create other Hospital Admins');
-      } else if (['WOREDA_ADMIN'].includes(newRole)) {
-        throw new BadRequestException('Hospital Admin cannot create Woreda Admins');
+      } else if (['WOREDA_ADMIN', 'SYSTEM_ADMIN', 'SUPER_ADMIN'].includes(newRole)) {
+        throw new BadRequestException('Hospital Admin cannot create admin users');
       }
 
       if (this.hospitalManagedRoles.includes(newRole)) {
@@ -193,6 +196,33 @@ export class UsersService {
       } else if (['HOSPITAL_ADMIN', 'HEALTH_CENTER_ADMIN', 'WOREDA_ADMIN', 'SYSTEM_ADMIN'].includes(newRole)) {
         throw new BadRequestException(`${creatorRole} cannot create admin users`);
       }
+    } else if (creatorRole === 'SYSTEM_ADMIN') {
+      if (!creatorAssignedRegion) {
+        throw new BadRequestException('System Admin must have an assigned region');
+      }
+      if (newRole === 'SUPER_ADMIN') {
+        throw new BadRequestException('System Admin cannot create SUPER_ADMIN');
+      }
+
+      const creatorRegion = creatorAssignedRegion;
+
+      if (createUserDto.regionId && createUserDto.regionId !== creatorRegion) {
+        throw new BadRequestException('System Admin can only create users in their own region');
+      }
+
+      if (woredaId) {
+        await this.ensureWoredaMatchesRegion(woredaId, creatorRegion);
+      }
+
+      if (hospitalId) {
+        await this.ensureHospitalMatchesRegion(hospitalId, creatorRegion);
+      }
+
+      const dto: any = { ...createUserDto, regionId: creatorRegion };
+      delete dto.regionId;
+      dto.regionId = creatorRegion;
+
+      return this.create(dto);
     } else if (creatorRole === 'WOREDA_ADMIN') {
       throw new BadRequestException('Woreda Admin cannot create users');
     }
@@ -334,7 +364,10 @@ export class UsersService {
       .populate('regionId')
       .exec();
 
-    if (role === 'SYSTEM_ADMIN' && regionId) {
+    if (role === 'SYSTEM_ADMIN') {
+      if (!regionId) {
+        return [];
+      }
       console.log('[UsersService] Filtering users by regionId:', regionId, 'total users before filter:', users.length);
       const filtered = this.filterUsersByRegion(users, regionId);
       console.log('[UsersService] Users after region filter:', filtered.length);
@@ -359,7 +392,8 @@ export class UsersService {
       .populate('regionId')
       .exec();
 
-    if (userRole === 'SYSTEM_ADMIN' && regionId) {
+    if (userRole === 'SYSTEM_ADMIN') {
+      if (!regionId) return [];
       return this.filterUsersByRegion(users, regionId);
     }
 
@@ -385,7 +419,10 @@ export class UsersService {
       }
     }
 
-    if (userRole === 'SYSTEM_ADMIN' && regionId) {
+    if (userRole === 'SYSTEM_ADMIN') {
+      if (!regionId) {
+        throw new ForbiddenException('Forbidden - Cannot access this user');
+      }
       const isInRegion = this.filterUsersByRegion([user], regionId).length > 0;
       if (!isInRegion) {
         throw new ForbiddenException('Forbidden - Cannot access this user');
@@ -424,8 +461,8 @@ export class UsersService {
     return this.userModel.findByIdAndUpdate(id, updateData, { new: true }).select('-password').exec();
   }
 
-  async updateWithRoleValidation(id: string, updateUserDto: UpdateUserDto, creatorRole: string, creatorHospitalId?: string, creatorId?: string): Promise<User> {
-    const { role: newRole, hospitalId } = updateUserDto;
+  async updateWithRoleValidation(id: string, updateUserDto: UpdateUserDto, creatorRole: string, creatorHospitalId?: string, creatorId?: string, creatorRegionId?: string): Promise<User> {
+    const { role: newRole, hospitalId, woredaId, regionId } = updateUserDto;
 
     // Find the user to update
     const userToUpdate = await this.userModel.findById(id);
@@ -433,7 +470,24 @@ export class UsersService {
       throw new NotFoundException('User not found');
     }
 
-    // Role-based update permissions
+    // System admin can only manage users in their assigned region
+    if (creatorRole === 'SYSTEM_ADMIN') {
+      if (!creatorRegionId) {
+        throw new ForbiddenException('System Admin has no assigned region');
+      }
+      await this.findByIdWithRoleFilter(id, 'SYSTEM_ADMIN', undefined, creatorRegionId);
+
+      if (regionId && regionId !== creatorRegionId) {
+        throw new BadRequestException('Cannot assign user to another region');
+      }
+      if (woredaId) {
+        await this.ensureWoredaMatchesRegion(woredaId, creatorRegionId);
+      }
+      if (hospitalId) {
+        await this.ensureHospitalMatchesRegion(hospitalId, creatorRegionId);
+      }
+    }
+
     if (creatorRole === 'HOSPITAL_ADMIN' || creatorRole === 'HEALTH_CENTER_ADMIN') {
       // Allow users to update their own profile regardless of other checks
       if (id === creatorId) {
@@ -558,11 +612,19 @@ export class UsersService {
     }
   }
 
-  async deleteWithRoleValidation(id: string, creatorRole: string, creatorHospitalId?: string, creatorId?: string): Promise<void> {
+  async deleteWithRoleValidation(id: string, creatorRole: string, creatorHospitalId?: string, creatorId?: string, creatorRegionId?: string): Promise<void> {
     // Find the user to delete
     const userToDelete = await this.userModel.findById(id);
     if (!userToDelete) {
       throw new NotFoundException('User not found');
+    }
+
+    // System admin can only delete users in their assigned region
+    if (creatorRole === 'SYSTEM_ADMIN') {
+      if (!creatorRegionId) {
+        throw new ForbiddenException('System Admin has no assigned region');
+      }
+      await this.findByIdWithRoleFilter(id, 'SYSTEM_ADMIN', undefined, creatorRegionId);
     }
 
     // Role-based delete permissions

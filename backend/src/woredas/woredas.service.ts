@@ -42,6 +42,9 @@ export class WoredasService {
     ).exec();
     // SYSTEM_ADMIN / MOH_ADMIN / SUPER_ADMIN — return all, optionally filtered by region
     if (role === 'SYSTEM_ADMIN' || role === 'MOH_ADMIN' || role === 'SUPER_ADMIN') {
+      if (role === 'SYSTEM_ADMIN' && !regionId) {
+        return [];
+      }
       if (regionId) {
         const woredas = await this.woredaModel.find().populate('regionId').exec();
         return woredas.filter((w: any) => {

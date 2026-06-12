@@ -56,7 +56,14 @@ export class CreateUserDto {
   @IsMongoId()
   woredaId?: string;
 
-  @ApiPropertyOptional({ example: 'Addis Ababa', description: 'Assigned region for SYSTEM_ADMIN' })
+  @ApiPropertyOptional({ example: '507f1f77bcf86cd799439011', description: 'Assigned region ID for SYSTEM_ADMIN' })
+  @ValidateIf(o => ['SYSTEM_ADMIN'].includes(o.role))
+  @IsString()
+  @IsNotEmpty()
+  @IsMongoId()
+  regionId?: string;
+
+  @ApiPropertyOptional({ example: 'Addis Ababa', description: 'Assigned region name for backward compatibility' })
   @ValidateIf(o => ['SYSTEM_ADMIN'].includes(o.role))
   @IsString()
   @IsNotEmpty()

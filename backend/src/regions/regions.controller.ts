@@ -31,8 +31,11 @@ export class RegionsController {
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   async findAll(@Request() req) {
     const user = req.user;
-    if (user.role === 'SUPER_ADMIN' || user.role === 'SYSTEM_ADMIN') {
+    if (user.role === 'SUPER_ADMIN') {
       return this.regionsService.findAll();
+    }
+    if (user.role === 'SYSTEM_ADMIN') {
+      return this.regionsService.findByUserRegion(user.regionId?.toString());
     }
     return this.regionsService.findByUserRegion(user.regionId);
   }
