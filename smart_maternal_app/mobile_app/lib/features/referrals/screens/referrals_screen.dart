@@ -4,6 +4,7 @@ import '../../../core/widgets/app_bar_widget.dart';
 import '../../../models/referral_model.dart';
 import '../services/referral_service.dart';
 import 'referral_detail_screen.dart';
+import '../../dashboard/screens/main_navigation_screen.dart';
 
 class ReferralsScreen extends StatefulWidget {
   const ReferralsScreen({super.key});
@@ -46,8 +47,16 @@ class _ReferralsScreenState extends State<ReferralsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F5),
-      appBar: const AppBarWidget(
+      appBar: AppBarWidget(
         title: 'Referrals',
+        onBackPressed: () {
+          final mainNav = MainNavigationScreen.of(context);
+          if (mainNav != null) {
+            mainNav.changeTab(kTabHome);
+          } else {
+            Navigator.of(context).maybePop();
+          }
+        },
       ),
       body: _isLoading
           ? const Center(

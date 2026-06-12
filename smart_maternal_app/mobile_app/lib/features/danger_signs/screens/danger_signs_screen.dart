@@ -7,6 +7,7 @@ import '../../../core/widgets/app_bar_widget.dart';
 import '../widgets/danger_sign_card.dart';
 import '../../profile/services/profile_service.dart';
 import '../../../models/user_model.dart';
+import '../../dashboard/screens/main_navigation_screen.dart';
 
 class DangerSignsScreen extends StatefulWidget {
   const DangerSignsScreen({super.key});
@@ -179,6 +180,14 @@ class _DangerSignsScreenState extends State<DangerSignsScreen> with SingleTicker
       backgroundColor: AppColors.background,
       appBar: AppBarWidget(
         title: AppTranslations.get('danger_signs', lang.isAmharic),
+        onBackPressed: () {
+          final mainNav = MainNavigationScreen.of(context);
+          if (mainNav != null) {
+            mainNav.changeTab(kTabHome);
+          } else {
+            Navigator.of(context).maybePop();
+          }
+        },
         actions: [
           IconButton(
             icon: const Icon(Icons.call_rounded, color: Colors.white),

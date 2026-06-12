@@ -6,6 +6,7 @@ import '../../appointments/services/appointment_service.dart';
 import '../../appointments/models/schedule_model.dart';
 import '../../appointments/widgets/appointment_theme.dart';
 import '../../child_growth/services/child_service.dart';
+import '../../dashboard/screens/main_navigation_screen.dart';
 import 'package:intl/intl.dart';
 
 class VaccinationScreen extends StatefulWidget {
@@ -83,6 +84,17 @@ class _VaccinationScreenState extends State<VaccinationScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFFFF8F5),
+      appBar: AppBarWidget(
+        title: 'Vaccinations',
+        onBackPressed: () {
+          final mainNav = MainNavigationScreen.of(context);
+          if (mainNav != null) {
+            mainNav.changeTab(kTabHome);
+          } else {
+            Navigator.of(context).maybePop();
+          }
+        },
+      ),
       body: _isLoading
           ? Center(
               child: Column(
